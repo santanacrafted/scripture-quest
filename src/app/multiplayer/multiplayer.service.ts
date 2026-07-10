@@ -17,12 +17,12 @@ export class MultiplayerService {
   private readonly targetProgress = 2;
 
   private readonly matchesSubject = new BehaviorSubject<Match[]>(
-    this.loadMatches(),
+    this.loadMatches()
   );
   readonly matches$ = this.matchesSubject.asObservable();
 
   private readonly turnsSubject = new BehaviorSubject<MatchTurn[]>(
-    this.loadTurns(),
+    this.loadTurns()
   );
   readonly turns$ = this.turnsSubject.asObservable();
 
@@ -30,7 +30,7 @@ export class MultiplayerService {
 
   createRandomMatch(playerId: string): Match {
     const waitingMatch = this.getMatches().find(
-      (match) => match.status === 'waiting_for_opponent',
+      (match) => match.status === 'waiting_for_opponent'
     );
     if (waitingMatch) {
       return this.joinMatch(waitingMatch.id, playerId);
@@ -41,11 +41,15 @@ export class MultiplayerService {
     return match;
   }
 
-  createFriendMatch(playerId: string, inviteCode?: string, friendId?: string): Match {
+  createFriendMatch(
+    playerId: string,
+    inviteCode?: string,
+    friendId?: string
+  ): Match {
     const match = this.createMatch(
       playerId,
       inviteCode ?? this.createInviteCode(),
-      'waiting_for_opponent',
+      'waiting_for_opponent'
     );
     if (friendId) {
       match.playerIds.push(friendId);
@@ -85,12 +89,12 @@ export class MultiplayerService {
     return this.getMatches()
       .filter(
         (match) =>
-          match.status === 'active' || match.status === 'waiting_for_opponent',
+          match.status === 'active' || match.status === 'waiting_for_opponent'
       )
       .sort(
         (left, right) =>
           new Date(right.updatedAt).getTime() -
-          new Date(left.updatedAt).getTime(),
+          new Date(left.updatedAt).getTime()
       );
   }
 
@@ -98,11 +102,22 @@ export class MultiplayerService {
     return this.getMatches().find((match) => match.id === matchId);
   }
 
+  deleteLocalMatch(matchId: string): void {
+    const matches = this.getMatches().filter((match) => match.id !== matchId);
+    const turns = this.getTurns().filter((turn) => turn.matchId !== matchId);
+    this.matchesSubject.next(matches);
+    this.turnsSubject.next(turns);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(this.storageKey, JSON.stringify(matches));
+      localStorage.setItem(this.turnsKey, JSON.stringify(turns));
+    }
+  }
+
   submitAnswer(
     matchId: string,
     playerId: string,
     questionId: string,
-    selectedAnswer: string,
+    selectedAnswer: string
   ): { match: Match; turn: MatchTurn } {
     const match = this.getMatchById(matchId);
     const question = this.questionService.getQuestionById(questionId);
@@ -130,7 +145,7 @@ export class MultiplayerService {
     const nextProgress = this.buildProgressMap(
       match.categoryProgress[playerId] ?? {},
       question.category,
-      isCorrect,
+      isCorrect
     );
     const nextCategoryProgress = {
       ...match.categoryProgress,
@@ -204,7 +219,7 @@ export class MultiplayerService {
   private createMatch(
     playerId: string,
     inviteCode: string | null,
-    status: MultiplayerStatus,
+    status: MultiplayerStatus
   ): Match {
     const now = new Date().toISOString();
     return {
@@ -228,7 +243,7 @@ export class MultiplayerService {
   private buildProgressMap(
     progress: MatchCategoryProgressMap,
     category: MatchCategory,
-    isCorrect: boolean,
+    isCorrect: boolean
   ): MatchCategoryProgressMap {
     const currentProgress = progress?.[category] ?? {
       current: 0,
@@ -251,12 +266,12 @@ export class MultiplayerService {
   }
 
   private findWinner(
-    categoryProgress: Record<string, MatchCategoryProgressMap>,
+    categoryProgress: Record<string, MatchCategoryProgressMap>
   ): string | null {
     return (
       Object.entries(categoryProgress).find(([, progressMap]) => {
         const completedCategories = Object.values(progressMap).filter(
-          (entry) => entry.completed,
+          (entry) => entry.completed
         ).length;
         return completedCategories >= 6;
       })?.[0] ?? null

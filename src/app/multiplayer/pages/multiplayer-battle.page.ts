@@ -7,12 +7,12 @@ import {
   MenuCardComponent,
   MenuCardConfig,
 } from '../../components/menu-card.component';
-import { MultiplayerService } from '../multiplayer.service';
+import { ActiveMatchesListComponent } from '../components/active-matches-list.component';
 
 @Component({
   selector: 'app-multiplayer-battle-page',
   standalone: true,
-  imports: [CommonModule, MenuCardComponent],
+  imports: [CommonModule, MenuCardComponent, ActiveMatchesListComponent],
   template: `
     <main
       class="route-page relative min-h-screen overflow-hidden bg-quest-dark text-white"
@@ -30,12 +30,13 @@ import { MultiplayerService } from '../multiplayer.service';
         ‹
       </button>
 
-      <div class="ml-auto flex min-h-screen w-[64%] flex-col justify-center py-12 pb-36 pl-4 pr-4 relative z-10">
-        <div class="ml-auto flex w-[50vw] max-w-full translate-y-[72px] flex-col gap-2">
+      <div class="flex min-h-screen w-full flex-col justify-center px-4 py-12 pb-36 relative z-10">
+        <div class="battle-panel mx-auto flex w-full max-w-[560px] translate-y-[30px] flex-col gap-2">
           <app-menu-card
             *ngFor="let card of battleCards"
             [config]="card"
           ></app-menu-card>
+          <app-active-matches-list></app-active-matches-list>
         </div>
       </div>
     </main>
@@ -55,6 +56,12 @@ import { MultiplayerService } from '../multiplayer.service';
           inset 0 0 0 3px rgba(20, 13, 7, 0.56),
           0 12px 22px rgba(0, 0, 0, 0.36);
       }
+
+      .battle-panel {
+        max-height: calc(100svh - 8rem);
+        overflow: auto;
+        padding: 0.2rem;
+      }
     `,
   ],
 })
@@ -67,7 +74,7 @@ export class MultiplayerBattlePage implements OnInit {
       description: 'Find a random opponent and start battling.',
       icon: '⚔️',
       color: 'green',
-      onClick: () => this.startQuickMatch(),
+      onClick: () => this.navigateTo('/multiplayer/quick-match'),
     },
     {
       title: 'Friend Battle',
@@ -87,7 +94,6 @@ export class MultiplayerBattlePage implements OnInit {
 
   constructor(
     private readonly authService: AuthService,
-    private readonly multiplayerService: MultiplayerService,
     private readonly router: Router,
   ) {}
 
@@ -95,12 +101,6 @@ export class MultiplayerBattlePage implements OnInit {
     this.authService.currentUser$.subscribe((user) => {
       this.currentUser = user;
     });
-  }
-
-  startQuickMatch(): void {
-    const playerId = this.currentUser?.uid ?? 'player-1';
-    const match = this.multiplayerService.createRandomMatch(playerId);
-    this.router.navigate(['/multiplayer/lobby', match.id]);
   }
 
   navigateTo(route: string): void {

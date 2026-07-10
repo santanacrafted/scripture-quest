@@ -78,6 +78,7 @@ type AuthMode = 'login' | 'register';
               <span>Email</span>
               <input
                 type="email"
+                email
                 name="email"
                 autocomplete="email"
                 required
@@ -399,15 +400,26 @@ export class LoginPage implements OnInit, OnDestroy {
 
   submit(): void {
     this.errorMessage = '';
+
+    const email = this.email.trim().toLowerCase();
+    const username = this.username.trim();
+    const displayName = this.displayName.trim();
+
+    const validationMessage = this.validateForm(email, username, displayName);
+    if (validationMessage) {
+      this.errorMessage = validationMessage;
+      return;
+    }
+
     this.isSubmitting = true;
 
     const request = this.mode === 'login'
-      ? this.authService.signIn(this.email.trim(), this.password)
+      ? this.authService.signIn(email, this.password)
       : this.authService.signUp(
-          this.email.trim(),
+          email,
           this.password,
-          this.username.trim(),
-          this.displayName.trim(),
+          username,
+          displayName,
         );
 
     request.subscribe({
@@ -428,6 +440,20 @@ export class LoginPage implements OnInit, OnDestroy {
   }
 
   private readableError(error: unknown): string {
+    const code = this.getErrorCode(error);
+    const messageMap: Record<string, string> = {
+      'auth/email-already-in-use': 'That email already has an account. Try signing in.',
+      'auth/invalid-email': 'Enter a valid email address, including @.',
+      'auth/invalid-credential': 'Email or password is incorrect.',
+      'auth/user-not-found': 'No account was found for that email.',
+      'auth/wrong-password': 'Email or password is incorrect.',
+      'auth/weak-password': 'Password must be at least 6 characters.',
+    };
+
+    if (code && messageMap[code]) {
+      return messageMap[code];
+    }
+
     if (error instanceof Error && error.message) {
       return error.message;
     }
@@ -435,5 +461,38 @@ export class LoginPage implements OnInit, OnDestroy {
     return this.mode === 'login'
       ? 'Unable to sign in. Check your email and password.'
       : 'Unable to create your account. Please try again.';
+  }
+
+  private validateForm(email: string, username: string, displayName: string): string {
+    if (!this.isValidEmail(email)) {
+      return 'Enter a valid email address, including @.';
+    }
+
+    if (this.password.length < 6) {
+      return 'Password must be at least 6 characters.';
+    }
+
+    if (this.mode === 'register' && displayName.length < 2) {
+      return 'Display name must be at least 2 characters.';
+    }
+
+    if (this.mode === 'register' && username.length < 3) {
+      return 'Username must be at least 3 characters.';
+    }
+
+    return '';
+  }
+
+  private isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  private getErrorCode(error: unknown): string {
+    if (typeof error === 'object' && error && 'code' in error) {
+      const code = (error as { code?: unknown }).code;
+      return typeof code === 'string' ? code : '';
+    }
+
+    return '';
   }
 }

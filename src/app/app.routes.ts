@@ -7,6 +7,7 @@ import { MatchLobbyPage } from './multiplayer/pages/match-lobby.page';
 import { MatchPlayPage } from './multiplayer/pages/match-play.page';
 import { MatchResultPage } from './multiplayer/pages/match-result.page';
 import { MultiplayerHomePage } from './multiplayer/pages/multiplayer-home.page';
+import { QuickMatchSearchPage } from './multiplayer/pages/quick-match-search.page';
 import { BibleReadyPage } from './pages/bible-ready.page';
 import { DailyQuestPage } from './pages/daily-quest.page';
 import { FeaturePage } from './pages/feature.page';
@@ -18,14 +19,39 @@ export const routes: Routes = [
   { path: '', component: LaunchPage, pathMatch: 'full' },
   { path: 'login', component: LoginPage, data: { mode: 'login' } },
   { path: 'register', component: LoginPage, data: { mode: 'register' } },
-  { path: 'multiplayer', component: MultiplayerHomePage, canActivate: [AuthGuard] },
+  {
+    path: 'multiplayer',
+    component: MultiplayerHomePage,
+    canActivate: [AuthGuard],
+  },
   { path: 'friends', component: FriendsPage, canActivate: [AuthGuard] },
-  { path: 'multiplayer/lobby/:id', component: MatchLobbyPage, canActivate: [AuthGuard] },
-  { path: 'multiplayer/play/:id', component: MatchPlayPage, canActivate: [AuthGuard] },
-  { path: 'multiplayer/result/:id', component: MatchResultPage, canActivate: [AuthGuard] },
+  {
+    path: 'multiplayer/lobby/:id',
+    component: MatchLobbyPage,
+    canActivate: [AuthGuard],
+  },
+  {
+    path: 'multiplayer/play/:id',
+    component: MatchPlayPage,
+    canActivate: [AuthGuard],
+  },
+  {
+    path: 'multiplayer/result/:id',
+    component: MatchResultPage,
+    canActivate: [AuthGuard],
+  },
+  {
+    path: 'multiplayer/quick-match',
+    component: QuickMatchSearchPage,
+    canActivate: [AuthGuard],
+  },
   { path: 'settings', component: SettingsPage, canActivate: [AuthGuard] },
   { path: 'bible-ready', component: BibleReadyPage, canActivate: [AuthGuard] },
-  { path: 'multiplayer-battle', component: MultiplayerBattlePage, canActivate: [AuthGuard] },
+  {
+    path: 'multiplayer-battle',
+    component: MultiplayerBattlePage,
+    canActivate: [AuthGuard],
+  },
   {
     path: 'battle-history',
     component: FeaturePage,

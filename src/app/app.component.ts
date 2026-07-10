@@ -27,6 +27,14 @@ export class AppComponent {
 
   get showBottomNav(): boolean {
     const url = this.router.url;
-    return url !== '/' && !['/login', '/register', '/bible-ready'].some((route) => url.startsWith(route));
+    return url !== '/' && ![
+      '/login',
+      '/register',
+      '/bible-ready',
+      '/multiplayer/quick-match',
+      '/multiplayer/lobby',
+      '/multiplayer/play',
+      '/multiplayer/result',
+    ].some((route) => url.startsWith(route));
   }
 }

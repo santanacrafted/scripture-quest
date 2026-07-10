@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist/scripture-quest/browser',
   plugins: {
     SplashScreen: {
-      launchShowDuration: 5500,
+      launchShowDuration: 1600,
       launchAutoHide: true,
       launchFadeOutDuration: 300,
       backgroundColor: '#0f0f0f',

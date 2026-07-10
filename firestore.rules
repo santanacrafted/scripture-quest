@@ -1,0 +1,55 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isMatchParticipant() {
+      return signedIn() && request.auth.uid in resource.data.playerIds;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'rating',
+          'wins',
+          'losses',
+          'banned',
+          'suspended',
+          'accountStatus'
+        ]);
+      allow delete: if false;
+    }
+
+    match /matchmakingQueue/{playerId} {
+      allow read: if isSelf(playerId);
+      allow create, update, delete: if false;
+    }
+
+    match /matches/{matchId} {
+      allow read: if isMatchParticipant();
+      allow create, delete: if false;
+      allow update: if isMatchParticipant()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'players',
+          'updatedAt'
+        ])
+        && request.resource.data.playerIds == resource.data.playerIds
+        && request.resource.data.mode == resource.data.mode
+        && request.resource.data.matchmaking == resource.data.matchmaking
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

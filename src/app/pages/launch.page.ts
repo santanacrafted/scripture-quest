@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { combineLatest, timer } from 'rxjs';
-import { filter, take } from 'rxjs/operators';
+import { SplashScreen } from '@capacitor/splash-screen';
+import { combineLatest, merge, timer } from 'rxjs';
+import { filter, mapTo, take } from 'rxjs/operators';
 import { AuthService } from '../auth/auth.service';
 
 @Component({
@@ -64,8 +65,13 @@ export class LaunchPage implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    void SplashScreen.hide();
+
     combineLatest([
-      this.authService.authReady$.pipe(filter(Boolean), take(1)),
+      merge(
+        this.authService.authReady$.pipe(filter(Boolean), take(1), mapTo(true)),
+        timer(3200).pipe(mapTo(true)),
+      ).pipe(take(1)),
       timer(1700),
     ]).subscribe(() => {
       const nextRoute = this.authService.getCurrentUser() ? '/multiplayer' : '/login';

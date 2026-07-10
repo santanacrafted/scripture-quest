@@ -11,6 +11,8 @@ import {
 } from '../multiplayer.models';
 import { MultiplayerService } from '../multiplayer.service';
 import { QuestionService } from '../question.service';
+import { FirestoreQuickMatch } from '../quick-match.models';
+import { QuickMatchService } from '../quick-match.service';
 
 @Component({
   selector: 'app-match-play-page',
@@ -38,6 +40,34 @@ import { QuestionService } from '../question.service';
             >
               Timer: 20s
             </div>
+          </div>
+
+          <div
+            *ngIf="quickMatch && !match"
+            class="mt-5 rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-sm"
+          >
+            <h2 class="text-2xl font-semibold text-slate-900">
+              Quick Match is ready
+            </h2>
+            <p class="mt-2 text-sm text-slate-600">
+              The server created this match for
+              {{ quickMatch.playerIds.length }} players. The next step is wiring
+              the Firestore-backed turn engine.
+            </p>
+            <div class="mt-4 grid gap-2">
+              <p
+                *ngFor="let playerId of quickMatch.playerIds"
+                class="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800"
+              >
+                {{ quickMatch.players[playerId].displayName }}
+              </p>
+            </div>
+            <button
+              class="mt-4 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+              (click)="goToLobby()"
+            >
+              Back to lobby
+            </button>
           </div>
 
           <div *ngIf="match" class="mt-5 grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
@@ -116,6 +146,7 @@ import { QuestionService } from '../question.service';
 })
 export class MatchPlayPage implements OnInit {
   match: Match | undefined;
+  quickMatch: FirestoreQuickMatch | null = null;
   question: Question | null = null;
   lastAnswerResult: {
     isCorrect: boolean;
@@ -130,9 +161,10 @@ export class MatchPlayPage implements OnInit {
     private readonly router: Router,
     private readonly multiplayerService: MultiplayerService,
     private readonly questionService: QuestionService,
+    private readonly quickMatchService: QuickMatchService
   ) {}
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
       this.router.navigate(['/multiplayer']);
@@ -140,6 +172,11 @@ export class MatchPlayPage implements OnInit {
     }
 
     this.match = this.multiplayerService.getMatchById(id);
+    if (!this.match) {
+      this.quickMatch = await this.quickMatchService.observeMatch(id);
+      return;
+    }
+
     this.loadQuestion();
   }
 
@@ -152,7 +189,7 @@ export class MatchPlayPage implements OnInit {
       this.match.id,
       'player-1',
       this.question.id,
-      answer,
+      answer
     );
     this.match = result.match;
     this.lastAnswerResult = {
@@ -179,9 +216,13 @@ export class MatchPlayPage implements OnInit {
 
     this.match = this.multiplayerService.forfeitMatch(
       this.match.id,
-      'player-1',
+      'player-1'
     );
     this.router.navigate(['/multiplayer/result', this.match.id]);
+  }
+
+  goToLobby(): void {
+    this.router.navigate(['/multiplayer/lobby', this.quickMatch?.id]);
   }
 
   private loadQuestion(): void {
