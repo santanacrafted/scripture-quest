@@ -8,8 +8,9 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   updateProfile,
+  User,
 } from 'firebase/auth';
-import { BehaviorSubject, catchError, defer, from, map, Observable, switchMap, throwError } from 'rxjs';
+import { BehaviorSubject, from, map, Observable } from 'rxjs';
 import { AppUser } from './auth.models';
 import { UserService } from './user.service';
 import { firebaseApp } from '../firebase';
@@ -18,7 +19,9 @@ import { firebaseApp } from '../firebase';
 export class AuthService {
   private auth: Auth;
   private currentUserSubject = new BehaviorSubject<AppUser | null>(null);
+  private authReadySubject = new BehaviorSubject<boolean>(false);
   readonly currentUser$ = this.currentUserSubject.asObservable();
+  readonly authReady$ = this.authReadySubject.asObservable();
 
   constructor(private readonly userService: UserService) {
     this.auth = getAuth(firebaseApp);
@@ -27,15 +30,17 @@ export class AuthService {
     });
     this.auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
-        const profile = await this.userService.getUserByUid(firebaseUser.uid);
-        this.currentUserSubject.next(profile ?? null);
+        this.currentUserSubject.next(this.profileFromFirebaseUser(firebaseUser));
+        this.authReadySubject.next(true);
+        void this.refreshProfile(firebaseUser);
       } else {
         this.currentUserSubject.next(null);
+        this.authReadySubject.next(true);
       }
     });
   }
 
-  signUp(email: string, password: string, username: string): Observable<AppUser> {
+  signUp(email: string, password: string, username: string, displayName: string): Observable<AppUser> {
     return from(
       (async () => {
         const existing = await this.userService.getUserByUsername(username);
@@ -50,13 +55,13 @@ export class AuthService {
           throw new Error('User registration failed.');
         }
 
-        await updateProfile(credential.user, { displayName: username });
+        await updateProfile(credential.user, { displayName });
 
         const user: AppUser = {
           uid: credential.user.uid,
           email,
           username,
-          displayName: username,
+          displayName,
           createdAt: new Date().toISOString(),
           friendIds: [],
         };
@@ -69,61 +74,20 @@ export class AuthService {
   }
 
   signIn(email: string, password: string): Observable<AppUser> {
-    console.log('AuthService.signIn called', email);
     return from(
       signInWithEmailAndPassword(this.auth, email, password)
-        .then(async (credential) => {
+        .then((credential) => {
           if (!credential.user) {
             throw new Error('Login failed.');
           }
-          let profile = null;
-          try {
-            profile = await this.userService.getUserByUid(credential.user.uid);
-          } catch (err) {
-            console.warn('AuthService.signIn: failed to load profile from Firestore', err);
-            // If Firestore is offline, fall back to a minimal in-memory profile
-            profile = {
-              uid: credential.user.uid,
-              email: credential.user.email ?? email,
-              username: credential.user.displayName ?? credential.user.uid,
-              displayName: credential.user.displayName ?? credential.user.uid,
-              createdAt: new Date().toISOString(),
-              friendIds: [],
-            } as AppUser;
-          }
 
-          if (!profile) {
-            // If profile wasn't found in Firestore (null) try to create one, but tolerate failures
-            try {
-              const newProfile: AppUser = {
-                uid: credential.user.uid,
-                email: credential.user.email ?? email,
-                username: credential.user.displayName ?? credential.user.uid,
-                displayName: credential.user.displayName ?? credential.user.uid,
-                createdAt: new Date().toISOString(),
-                friendIds: [],
-              };
-              await this.userService.createUser(newProfile);
-              profile = newProfile;
-            } catch (err) {
-              console.warn('AuthService.signIn: failed to create profile in Firestore', err);
-              profile = {
-                uid: credential.user.uid,
-                email: credential.user.email ?? email,
-                username: credential.user.displayName ?? credential.user.uid,
-                displayName: credential.user.displayName ?? credential.user.uid,
-                createdAt: new Date().toISOString(),
-                friendIds: [],
-              } as AppUser;
-            }
-          }
-
+          const profile = this.profileFromFirebaseUser(credential.user, email);
           this.currentUserSubject.next(profile);
-          console.log('AuthService.signIn success', credential.user.uid);
+          this.authReadySubject.next(true);
+          void this.refreshProfile(credential.user);
           return profile;
         })
         .catch((err) => {
-          console.error('AuthService.signIn failed', err);
           throw err;
         }),
     ).pipe(map((user) => user));
@@ -139,5 +103,34 @@ export class AuthService {
 
   getCurrentUser(): AppUser | null {
     return this.currentUserSubject.getValue();
+  }
+
+  private profileFromFirebaseUser(firebaseUser: User, fallbackEmail = ''): AppUser {
+    const displayName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || firebaseUser.uid;
+
+    return {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email ?? fallbackEmail,
+      username: displayName,
+      displayName,
+      createdAt: new Date().toISOString(),
+      friendIds: [],
+    };
+  }
+
+  private async refreshProfile(firebaseUser: User): Promise<void> {
+    try {
+      const profile = await this.userService.getUserByUid(firebaseUser.uid);
+      if (profile) {
+        this.currentUserSubject.next(profile);
+        return;
+      }
+
+      const fallbackProfile = this.profileFromFirebaseUser(firebaseUser);
+      await this.userService.createUser(fallbackProfile);
+      this.currentUserSubject.next(fallbackProfile);
+    } catch (error) {
+      console.warn('Failed to refresh auth profile:', error);
+    }
   }
 }

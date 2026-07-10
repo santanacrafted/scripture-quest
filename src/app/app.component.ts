@@ -26,6 +26,7 @@ export class AppComponent {
   }
 
   get showBottomNav(): boolean {
-    return !['/login', '/register', '/bible-ready'].some((route) => this.router.url.startsWith(route));
+    const url = this.router.url;
+    return url !== '/' && !['/login', '/register', '/bible-ready'].some((route) => url.startsWith(route));
   }
 }
