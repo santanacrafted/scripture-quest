@@ -1,0 +1,15 @@
+:host,
+main {
+  display: block;
+  min-height: 100%;
+}
+
+:host {
+  background: #0f0f0f;
+}
+
+.route-shell {
+  position: relative;
+  min-height: 100vh;
+  background: #0f0f0f;
+}

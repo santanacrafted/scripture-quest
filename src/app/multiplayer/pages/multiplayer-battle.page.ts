@@ -1,0 +1,113 @@
+import { CommonModule } from '@angular/common';
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { AppUser } from '../../auth/auth.models';
+import { AuthService } from '../../auth/auth.service';
+import {
+  MenuCardComponent,
+  MenuCardConfig,
+} from '../../components/menu-card.component';
+import { MultiplayerService } from '../multiplayer.service';
+
+@Component({
+  selector: 'app-multiplayer-battle-page',
+  standalone: true,
+  imports: [CommonModule, MenuCardComponent],
+  template: `
+    <main
+      class="route-page relative min-h-screen overflow-hidden bg-quest-dark text-white"
+      [style.backgroundImage]="'url(multiplayer-page.png)'"
+      [style.backgroundSize]="'cover'"
+      [style.backgroundPosition]="'center'"
+      [style.backgroundAttachment]="'fixed'"
+    >
+      <button
+        class="quest-back-button absolute left-4 top-[calc(env(safe-area-inset-top)+1rem)] z-20 flex h-10 w-10 items-center justify-center rounded-full bg-quest-dark/95 font-serif text-2xl font-bold text-quest-gold"
+        type="button"
+        aria-label="Back to home"
+        (click)="goHome()"
+      >
+        ‹
+      </button>
+
+      <div class="ml-auto flex min-h-screen w-[64%] flex-col justify-center py-12 pb-36 pl-4 pr-4 relative z-10">
+        <div class="ml-auto flex w-[50vw] max-w-full translate-y-[72px] flex-col gap-2">
+          <app-menu-card
+            *ngFor="let card of battleCards"
+            [config]="card"
+          ></app-menu-card>
+        </div>
+      </div>
+    </main>
+  `,
+  styles: [
+    `
+      :host {
+        display: block;
+        background: #0f0f0f;
+      }
+
+      .quest-back-button {
+        border: 1px solid #332415;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 244, 196, 0.22),
+          inset 0 0 0 1px rgba(245, 197, 93, 0.72),
+          inset 0 0 0 3px rgba(20, 13, 7, 0.56),
+          0 12px 22px rgba(0, 0, 0, 0.36);
+      }
+    `,
+  ],
+})
+export class MultiplayerBattlePage implements OnInit {
+  currentUser: AppUser | null = null;
+
+  battleCards: MenuCardConfig[] = [
+    {
+      title: 'Quick Match',
+      description: 'Find a random opponent and start battling.',
+      icon: '⚔️',
+      color: 'green',
+      onClick: () => this.startQuickMatch(),
+    },
+    {
+      title: 'Friend Battle',
+      description: 'Challenge a friend to a Bible battle.',
+      icon: '👥',
+      color: 'blue-dark',
+      onClick: () => this.navigateTo('/friends'),
+    },
+    {
+      title: 'Battle History',
+      description: 'Review your past battles and stats.',
+      icon: '📜',
+      color: 'teal',
+      onClick: () => this.navigateTo('/battle-history'),
+    },
+  ];
+
+  constructor(
+    private readonly authService: AuthService,
+    private readonly multiplayerService: MultiplayerService,
+    private readonly router: Router,
+  ) {}
+
+  ngOnInit(): void {
+    this.authService.currentUser$.subscribe((user) => {
+      this.currentUser = user;
+    });
+  }
+
+  startQuickMatch(): void {
+    const playerId = this.currentUser?.uid ?? 'player-1';
+    const match = this.multiplayerService.createRandomMatch(playerId);
+    this.router.navigate(['/multiplayer/lobby', match.id]);
+  }
+
+  navigateTo(route: string): void {
+    this.router.navigate([route]);
+  }
+
+  goHome(): void {
+    this.router.navigate(['/multiplayer']);
+  }
+}

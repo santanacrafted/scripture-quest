@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body { height: 100%; touch-action: manipulation; overscroll-behavior: none; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; background: #0f0f0f; color: #0f172a; -webkit-text-size-adjust: 100%; user-select: none; }
+button, a, input, textarea, select { touch-action: manipulation; }
+
+.route-page {
+  animation: route-page-fade 280ms ease-out both;
+}
+
+@keyframes route-page-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
