@@ -39,6 +39,7 @@ export interface FirestoreQuickMatch {
   playerIds: string[];
   players: Record<string, {
     displayName: string;
+    username?: string;
     avatarUrl: string | null;
     ratingAtMatchStart: number;
     score: number;

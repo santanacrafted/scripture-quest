@@ -1,6 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { FriendBattleService } from '../friend-battle/friend-battle.service';
 
 export interface NavItem {
   label: string;
@@ -22,8 +24,9 @@ export interface NavItem {
           *ngFor="let item of navItems"
           class="flex min-w-0 flex-1 flex-col items-center gap-1 px-1 py-1 text-quest-gold transition-all duration-300 hover:bg-quest-gold/10"
           (click)="handleClick(item)"
+          [attr.aria-label]="item.label === 'Matches' && pendingCount ? 'Matches, '+pendingCount+' pending invitations' : item.label"
         >
-          <div class="text-3xl leading-none">{{ item.icon }}</div>
+          <div class="relative text-3xl leading-none">{{ item.icon }}<span *ngIf="item.label==='Matches' && pendingCount" class="badge">{{pendingCount>9?'9+':pendingCount}}</span></div>
           <span
             class="max-w-full break-words text-center text-[8px] font-bold uppercase leading-tight text-amber-100"
           >
@@ -69,19 +72,26 @@ export interface NavItem {
           linear-gradient(#f1c663, #f1c663) right bottom / 1px 22px no-repeat;
         opacity: 0.72;
       }
+      .badge{position:absolute;right:-.7rem;top:-.45rem;display:grid;min-width:1.25rem;height:1.25rem;place-items:center;border:2px solid #ffe29a;border-radius:1rem;background:#a92720;color:white;font:900 .62rem/1 sans-serif}
     `,
   ],
 })
-export class BottomNavComponent {
+export class BottomNavComponent implements OnInit, OnDestroy {
+  pendingCount=0; private sub?:Subscription;
   navItems: NavItem[] = [
     { label: 'Profile', icon: '👤', route: '/profile' },
-    { label: 'Leaderboards', icon: '👑', route: '/leaderboards' },
+    { label: 'Matches', icon: '⚔️', route: '/matches' },
     { label: 'Friends', icon: '👥', route: '/friends' },
     { label: 'Church', icon: '⛪', route: '/church' },
     { label: 'Settings', icon: '⚙️', route: '/settings' },
   ];
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private battles: FriendBattleService) {}
+  ngOnInit(){this.sub=this.battles.observeIncomingInvitations().subscribe({
+    next:x=>this.pendingCount=x.filter(i=>i.status==='pending').length,
+    error:error=>{this.pendingCount=0;console.warn('[Matches] Invitation badge unavailable.',error?.code??error)}
+  })}
+  ngOnDestroy(){this.sub?.unsubscribe()}
 
   handleClick(item: NavItem): void {
     if (item.onClick) {

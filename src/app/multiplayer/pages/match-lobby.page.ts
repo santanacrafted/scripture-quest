@@ -5,6 +5,9 @@ import { Match } from '../multiplayer.models';
 import { MultiplayerService } from '../multiplayer.service';
 import { FirestoreQuickMatch } from '../quick-match.models';
 import { QuickMatchService } from '../quick-match.service';
+import { FriendBattleService } from '../../friend-battle/friend-battle.service';
+import { FriendBattleMatch } from '../../friend-battle/friend-battle.models';
+import { firebaseAuth } from '../../firebase';
 
 @Component({
   selector: 'app-match-lobby-page',
@@ -22,12 +25,12 @@ import { QuickMatchService } from '../quick-match.service';
         <p class="summary">
           {{
             quickMatch
-              ? 'Your Quick Match was created securely. Both explorers are ready for battle.'
+              ? (friendBattle ? 'Both invited friends must mark themselves ready before the host can begin.' : 'Your Quick Match was created securely. Both explorers are ready for battle.')
               : 'Invite a challenger, then begin the battle when both players are ready.'
           }}
         </p>
 
-        <div *ngIf="match || quickMatch" class="match-card">
+        <div *ngIf="match || quickMatch || friendBattle" class="match-card">
           <div class="badge-row">
             <span>{{ match?.inviteCode ?? (quickMatch ? 'QUICK MATCH' : 'INVITE') }}</span>
             <strong>{{ sourceLabel }}</strong>
@@ -50,11 +53,12 @@ import { QuickMatchService } from '../quick-match.service';
             </div>
             <div>
               <span>Rounds</span>
-              <strong>{{ quickMatch?.totalRounds ?? 6 }}</strong>
+              <strong>{{ friendBattle?.totalRounds ?? quickMatch?.totalRounds ?? 6 }}</strong>
             </div>
           </div>
 
           <div class="actions">
+            <button *ngIf="friendBattle" class="primary-button" type="button" (click)="toggleReady()">{{myReady?'Not ready':'Ready'}}</button>
             <button class="primary-button" type="button" [disabled]="isWaitingForOpponent" (click)="startMatch()">
               {{ isWaitingForOpponent ? 'Waiting...' : 'Start match' }}
             </button>
@@ -308,12 +312,14 @@ import { QuickMatchService } from '../quick-match.service';
 export class MatchLobbyPage implements OnInit {
   match: Match | undefined;
   quickMatch: FirestoreQuickMatch | null = null;
+  friendBattle: FriendBattleMatch | null = null;
   matchId = '';
 
   constructor(
     private readonly route: ActivatedRoute,
     private readonly multiplayerService: MultiplayerService,
     private readonly quickMatchService: QuickMatchService,
+    private readonly friendBattleService: FriendBattleService,
     private readonly router: Router,
   ) {}
 
@@ -325,19 +331,32 @@ export class MatchLobbyPage implements OnInit {
     }
 
     this.matchId = id;
+    try {
+      await this.friendBattleService.hydrateMatchPlayerProfiles(id);
+    } catch (error) {
+      console.warn('[Lobby] Could not refresh player usernames.', error);
+    }
     this.match = this.multiplayerService.getMatchById(id);
     if (!this.match) {
       this.quickMatch = await this.quickMatchService.observeMatch(id);
+      if ((this.quickMatch as any)?.mode === 'friend-battle') {
+        this.friendBattle = this.quickMatch as unknown as FriendBattleMatch;
+        this.quickMatch = null;
+        this.friendBattleService.observeLobby(id).subscribe(m=>{this.friendBattle=m;if(m?.status==='active')void this.router.navigate(['/multiplayer/play',id]);});
+      }
     }
   }
 
   startMatch(): void {
-    if (this.isWaitingForOpponent || (!this.match && !this.quickMatch)) {
+    if (this.isWaitingForOpponent || (!this.match && !this.quickMatch && !this.friendBattle)) {
       return;
     }
 
+    if(this.friendBattle){void this.friendBattleService.startMatch(this.matchId).then(()=>this.router.navigate(['/multiplayer/play',this.matchId]));return;}
     void this.router.navigate(['/multiplayer/play', this.match?.id ?? this.matchId]);
   }
+  toggleReady(){void this.friendBattleService.setReady(this.matchId,!this.myReady)}
+  get myReady(){const uid=firebaseAuth.currentUser?.uid;return !!uid&&!!this.friendBattle?.players[uid]?.ready}
 
   goBack(): void {
     void this.router.navigate(['/multiplayer-battle']);
@@ -351,15 +370,17 @@ export class MatchLobbyPage implements OnInit {
     if (this.quickMatch) {
       return this.quickMatch.playerIds.length < 2;
     }
+    if(this.friendBattle)return this.friendBattle.playerIds.length<2||!this.friendBattle.playerIds.every(id=>this.friendBattle?.players[id]?.ready);
 
     return true;
   }
 
   get playerCount(): number {
-    return this.match?.playerIds.length ?? this.quickMatch?.playerIds.length ?? 0;
+    return this.match?.playerIds.length ?? this.quickMatch?.playerIds.length ?? this.friendBattle?.playerIds.length ?? 0;
   }
 
   get sourceLabel(): string {
+    if (this.friendBattle) return 'Invited Friend';
     if (!this.quickMatch) {
       return 'Invite';
     }
@@ -370,9 +391,10 @@ export class MatchLobbyPage implements OnInit {
   get playerSummaries(): Array<{ displayName: string }> {
     if (this.quickMatch) {
       return this.quickMatch.playerIds.map((playerId) => ({
-        displayName: this.quickMatch?.players[playerId]?.displayName ?? 'Explorer',
+        displayName: this.quickMatch?.players[playerId]?.username ?? this.quickMatch?.players[playerId]?.displayName ?? 'Explorer',
       }));
     }
+    if(this.friendBattle)return this.friendBattle.playerIds.map(id=>({displayName:this.friendBattle?.players[id]?.username??this.friendBattle?.players[id]?.displayName??'Explorer'}));
 
     return (this.match?.playerIds ?? []).map((playerId) => ({ displayName: playerId }));
   }

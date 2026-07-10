@@ -1,83 +1,20 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService } from './auth.service';
-import { UserService } from './user.service';
-import { MultiplayerService } from '../multiplayer/multiplayer.service';
-import { AppUser } from './auth.models';
+import { Subscription } from 'rxjs';
+import { firebaseAuth } from '../firebase';
+import { FriendsService } from '../friends/friends.service';
+import { FriendRequest, Friendship, PublicPlayer } from '../friends/friends.models';
+import { FriendBattleService } from '../friend-battle/friend-battle.service';
+import { BattleInvitation, FriendBattleMatch } from '../friend-battle/friend-battle.models';
 
-@Component({
-  selector: 'app-friends-page',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
-    <main class="min-h-screen bg-slate-100 px-4 py-8 text-slate-900">
-      <div class="mx-auto w-full max-w-4xl space-y-4">
-        <section class="rounded-[32px] border border-slate-200 bg-white p-6 shadow-lg">
-          <div class="flex items-center justify-between gap-4">
-            <div>
-              <p class="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-600">Friends</p>
-              <h1 class="text-3xl font-semibold">Play with your people</h1>
-            </div>
-            <button class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white" (click)="goBack()">
-              Back
-            </button>
-          </div>
-
-          <p class="mt-3 text-sm text-slate-600">Select a friend to start a match or keep exploring random battles.</p>
-
-          <div *ngIf="friends.length === 0" class="mt-6 rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">
-            No friends yet. Search by username from the home screen and add a friend to play.
-          </div>
-
-          <div class="mt-6 space-y-4">
-            <article *ngFor="let friend of friends" class="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p class="text-lg font-semibold text-slate-900">{{ friend.username }}</p>
-                  <p class="text-sm text-slate-500">{{ friend.email }}</p>
-                </div>
-                <button class="rounded-full bg-cyan-600 px-4 py-2 text-sm font-semibold text-white" (click)="challengeFriend(friend)">
-                  Challenge
-                </button>
-              </div>
-            </article>
-          </div>
-        </section>
-      </div>
-    </main>
-  `,
-})
-export class FriendsPage implements OnInit {
-  currentUser: AppUser | null = null;
-  friends: AppUser[] = [];
-
-  constructor(
-    private readonly authService: AuthService,
-    private readonly userService: UserService,
-    private readonly multiplayerService: MultiplayerService,
-    private readonly router: Router,
-  ) {}
-
-  ngOnInit(): void {
-    this.authService.currentUser$.subscribe(async (user) => {
-      this.currentUser = user;
-      if (user) {
-        this.friends = await this.userService.getFriends(user.uid);
-      }
-    });
-  }
-
-  async challengeFriend(friend: AppUser): Promise<void> {
-    if (!this.currentUser) {
-      return;
-    }
-
-    const match = this.multiplayerService.createFriendMatch(this.currentUser.uid, friend.uid);
-    this.router.navigate(['/multiplayer/lobby', match.id]);
-  }
-
-  goBack(): void {
-    this.router.navigate(['/multiplayer']);
-  }
-}
+@Component({selector:'app-friends-page',standalone:true,imports:[CommonModule,FormsModule],template:`
+<main class="page"><button class="back" (click)="router.navigate(['/multiplayer-battle'])">‹</button><section class="panel">
+ <p class="eyebrow">Friends</p><h1>Fellow Explorers</h1><div class="tabs" role="tablist"><button *ngFor="let t of tabs" [class.active]="tab===t" (click)="tab=t">{{t}}<b *ngIf="t==='Requests'&&incoming.length">{{incoming.length}}</b></button></div>
+ <p class="notice" *ngIf="message" [class.error-notice]="messageType==='error'" role="status">{{message}}</p>
+ <ng-container *ngIf="tab==='Friends'"><p class="empty" *ngIf="!friends.length">Your fellowship is waiting. Find an explorer to begin.</p><article class="card" *ngFor="let f of friends"><div class="avatar">{{initial(f.friend)}}</div><div class="grow"><strong>{{f.friend?.displayName||'Explorer'}}</strong><span>{{f.friend?.username||'explorer'}}</span></div><button class="gold" [disabled]="busyId===f.id" (click)="challenge(f)">{{busyId===f.id?'Sending…':(existingMatch(f)?(existingMatch(f)?.status==='lobby'?'Open Lobby':'Open Match'):(hasIncomingInvite(f)?'Respond':(isInvited(f)?'Invitation Sent':'Challenge')))}}</button><button class="more" aria-label="Remove friend" (click)="remove(f)">⋮</button></article></ng-container>
+ <ng-container *ngIf="tab==='Requests'"><h2>Incoming</h2><article class="card" *ngFor="let r of incoming"><div class="avatar">{{initial(r.sender)}}</div><div class="grow"><strong>{{r.sender?.displayName||'Explorer'}}</strong><span>Wants to join your fellowship</span></div><button class="gold" [disabled]="busyId===r.id" (click)="respond(r,'accept')">{{busyId===r.id?'Working…':'Accept'}}</button><button class="dark" [disabled]="busyId===r.id" (click)="respond(r,'decline')">Decline</button></article><h2>Sent</h2><article class="card" *ngFor="let r of outgoing"><div class="grow"><strong>{{r.recipient?.displayName||'Explorer'}}</strong><span>Pending</span></div><button class="dark" [disabled]="busyId===r.id" (click)="cancel(r)">{{busyId===r.id?'Cancelling…':'Cancel'}}</button></article><p class="empty" *ngIf="!incoming.length&&!outgoing.length">No pending requests.</p></ng-container>
+ <ng-container *ngIf="tab==='Find Friends'"><form class="search" (ngSubmit)="search()"><input [(ngModel)]="term" name="term" minlength="2" placeholder="Username, display name, or friend code" aria-label="Find friends"><button class="gold" [disabled]="searching">{{searching?'Searching…':'Search'}}</button></form><p class="empty" *ngIf="searched&&!searching&&!results.length">No explorers found. Check the username and try again.</p><article class="card" *ngFor="let p of results"><div class="avatar">{{initial(p)}}</div><div class="grow"><strong>{{p.displayName}}</strong><span>{{p.username}} · {{p.friendCode}}</span></div><button class="gold" (click)="add(p)">Add</button><button class="more" aria-label="Block player" (click)="block(p)">⋮</button></article></ng-container>
+</section></main>`,styles:[`:host{display:block;background:#070a12;color:#fff8df}.page{min-height:100svh;background:linear-gradient(#07101688,#071016e8),url('/multiplayer-page.png') center/cover fixed;padding:max(4.5rem,calc(env(safe-area-inset-top) + 4rem)) 1rem calc(env(safe-area-inset-bottom) + 2rem)}.panel{max-width:38rem;margin:auto;border:2px solid #d8b15f;border-radius:10px;background:#0e1112e8;padding:1rem;box-shadow:0 1rem 3rem #0009}.back{position:fixed;top:calc(env(safe-area-inset-top) + 1rem);left:1rem;width:44px;height:44px;border:2px solid #d8b15f;border-radius:50%;background:#111;color:#f8d36c;font-size:2rem}.eyebrow,h1{text-align:center;text-transform:uppercase}.eyebrow{color:#f5d36e;font-weight:900;margin:0}h1{font:900 clamp(1.8rem,8vw,3rem) Georgia;margin:.25rem}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:.35rem;margin:1rem 0}.tabs button,.dark,.more{border:1px solid #9b7c3b;background:#15191a;color:#fff8df;border-radius:7px;min-height:44px;font-weight:800}.tabs .active{background:#275b50;color:white}.tabs b{margin-left:.3rem;background:#b53326;padding:.05rem .35rem;border-radius:1rem}.card{display:flex;align-items:center;gap:.65rem;border:2px solid #d8b15f;border-radius:8px;background:linear-gradient(#275b50,#1c464a);padding:.7rem;margin:.6rem 0}.avatar{display:grid;place-items:center;width:44px;height:44px;border:2px solid #f5d36e;border-radius:50%;background:#111;font-weight:900}.grow{flex:1;min-width:0}.grow strong,.grow span{display:block}.grow span{font-size:.75rem;color:#fff6d5}.gold{min-height:44px;border:2px solid #ffe28a;border-radius:7px;background:linear-gradient(#fce6a6,#d69b32);color:#201407;font-weight:900}.more{width:38px}.search{display:flex;gap:.5rem}.search input{min-width:0;flex:1;border:2px solid #d8b15f;border-radius:7px;background:#080b0c;color:white;padding:.75rem}.empty,.notice{padding:1rem;text-align:center;border:1px solid #8b713b;border-radius:8px}.notice{color:#f8d36c}h2{font:900 1rem Georgia;text-transform:uppercase;color:#f5d36e;margin-top:1.2rem}`]})
+export class FriendsPage implements OnInit,OnDestroy { tabs=['Friends','Requests','Find Friends'];tab='Friends';term='';results:PublicPlayer[]=[];searching=false;searched=false;friends:Friendship[]=[];incoming:FriendRequest[]=[];outgoing:FriendRequest[]=[];outgoingBattles:BattleInvitation[]=[];incomingBattles:BattleInvitation[]=[];battleMatches:FriendBattleMatch[]=[];message='';messageType:'success'|'error'='success';busyId='';private sub=new Subscription();constructor(public router:Router,private fs:FriendsService,private battles:FriendBattleService){}ngOnInit(){this.sub.add(this.fs.observeFriends().subscribe(x=>this.friends=x));this.sub.add(this.fs.observeIncomingRequests().subscribe(x=>this.incoming=x));this.sub.add(this.fs.observeOutgoingRequests().subscribe(x=>this.outgoing=x));this.sub.add(this.battles.observeOutgoingInvitations().subscribe(x=>this.outgoingBattles=x));this.sub.add(this.battles.observeIncomingInvitations().subscribe(x=>this.incomingBattles=x));this.sub.add(this.battles.observeMatches().subscribe(x=>this.battleMatches=x));}ngOnDestroy(){this.sub.unsubscribe()}initial(p?:PublicPlayer){return (p?.displayName||'E')[0].toUpperCase()}async search(){if(this.term.trim().length<2){this.message='Enter at least 2 characters.';return}this.searching=true;this.searched=true;this.message='';try{this.results=(await this.fs.searchPlayers(this.term.trim())).players}catch(error:any){this.results=[];this.message=error?.message||'Search is temporarily unavailable.'}finally{this.searching=false}}async add(p:PublicPlayer){await this.runAction(p.uid,async()=>{await this.fs.sendFriendRequest(p.uid);this.showMessage('Friend request sent.')})}async respond(r:FriendRequest,a:'accept'|'decline'){await this.runAction(r.id,async()=>{await this.fs.respondToFriendRequest(r.id,a);this.showMessage(a==='accept'?'Friend request accepted.':'Friend request declined.')})}async cancel(r:FriendRequest){await this.runAction(r.id,async()=>{await this.fs.cancelFriendRequest(r.id);this.showMessage('Friend request cancelled.')})}async remove(f:Friendship){if(confirm('Remove this friend?'))await this.fs.removeFriend(f.id)}async block(p:PublicPlayer){if(confirm('Block this explorer?'))await this.fs.blockPlayer(p.uid)}async challenge(f:Friendship){const currentUid=firebaseAuth.currentUser?.uid;const id=f.userIds.find(x=>x!==currentUid);const match=this.existingMatch(f);if(match){void this.router.navigate(['/multiplayer/lobby',match.id]);return}if(id&&this.incomingBattles.some(i=>i.challengerId===id&&i.status==='pending')){void this.router.navigate(['/matches']);return}if(id&&this.outgoingBattles.some(i=>i.recipientId===id&&i.status==='pending')){void this.router.navigate(['/matches']);return}if(!id){this.showMessage('Could not identify this friend.','error');return}await this.runAction(f.id,async()=>{await this.battles.sendInvitation(id);this.showMessage('Battle invitation sent. Opening Matches…');setTimeout(()=>void this.router.navigate(['/matches']),450)})}existingMatch(f:Friendship){const uid=firebaseAuth.currentUser?.uid;const friendId=f.userIds.find(id=>id!==uid);return friendId?this.battleMatches.find(match=>match.mode==='friend-battle'&&['lobby','active','waiting'].includes(match.status)&&match.playerIds.includes(friendId)):undefined}hasIncomingInvite(f:Friendship){const uid=firebaseAuth.currentUser?.uid;const friendId=f.userIds.find(id=>id!==uid);return !!friendId&&this.incomingBattles.some(i=>i.challengerId===friendId&&i.status==='pending')}isInvited(f:Friendship){const uid=firebaseAuth.currentUser?.uid;const friendId=f.userIds.find(id=>id!==uid);return !!friendId&&this.outgoingBattles.some(i=>i.recipientId===friendId&&i.status==='pending')}async runAction(id:string,action:()=>Promise<void>){if(this.busyId)return;this.busyId=id;try{await action()}catch(error:any){this.showMessage(error?.message||'That action could not be completed. Please try again.','error')}finally{this.busyId=''}}showMessage(message:string,type:'success'|'error'='success'){this.message=message;this.messageType=type}}

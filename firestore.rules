@@ -15,7 +15,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if signedIn();
+      allow read: if isSelf(userId);
       allow create: if isSelf(userId);
       allow update: if isSelf(userId)
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
@@ -29,6 +29,26 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /friendRequests/{id} {
+      allow read: if signedIn() && (resource.data.senderId == request.auth.uid || resource.data.recipientId == request.auth.uid);
+      allow write: if false;
+    }
+    match /friendships/{id} {
+      allow read: if signedIn() && request.auth.uid in resource.data.userIds;
+      allow write: if false;
+    }
+    match /blocks/{id} {
+      allow read: if signedIn() && resource.data.blockerId == request.auth.uid;
+      allow write: if false;
+    }
+    match /battleInvitations/{id} {
+      allow read: if signedIn() && (
+        resource.data.recipientId == request.auth.uid
+        || resource.data.challengerId == request.auth.uid
+      );
+      allow write: if false;
+    }
+
     match /matchmakingQueue/{playerId} {
       allow read: if isSelf(playerId);
       allow create, update, delete: if false;
@@ -37,15 +57,7 @@ service cloud.firestore {
     match /matches/{matchId} {
       allow read: if isMatchParticipant();
       allow create, delete: if false;
-      allow update: if isMatchParticipant()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'players',
-          'updatedAt'
-        ])
-        && request.resource.data.playerIds == resource.data.playerIds
-        && request.resource.data.mode == resource.data.mode
-        && request.resource.data.matchmaking == resource.data.matchmaking
-        && request.resource.data.createdAt == resource.data.createdAt;
+      allow update: if false;
     }
 
     match /{document=**} {

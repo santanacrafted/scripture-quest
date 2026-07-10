@@ -6,6 +6,8 @@ import { Match } from '../multiplayer.models';
 import { MultiplayerService } from '../multiplayer.service';
 import { FirestoreQuickMatch } from '../quick-match.models';
 import { QuickMatchService } from '../quick-match.service';
+import { FriendBattleService } from '../../friend-battle/friend-battle.service';
+import { FriendBattleMatch } from '../../friend-battle/friend-battle.models';
 
 @Component({
   selector: 'app-active-matches-list',
@@ -37,7 +39,14 @@ import { QuickMatchService } from '../quick-match.service';
               </p>
             </div>
             <a class="open-link" [routerLink]="['/multiplayer/lobby', match.id]">Open</a>
-            <button class="delete-button" type="button" (click)="deleteQuickMatch(match.id)">Delete</button>
+          </article>
+
+          <article *ngFor="let match of friendBattleMatches" class="match-row">
+            <div class="match-copy">
+              <p class="match-title">Friend Battle</p>
+              <p class="match-meta">{{ match.playerIds.length }}/2 explorers · {{ match.status === 'lobby' ? 'Lobby' : 'Round ' + match.roundNumber }}</p>
+            </div>
+            <a class="open-link" [routerLink]="['/multiplayer/lobby', match.id]">Open</a>
           </article>
 
           <article *ngFor="let match of localMatches" class="match-row">
@@ -201,28 +210,34 @@ import { QuickMatchService } from '../quick-match.service';
 export class ActiveMatchesListComponent implements OnInit, OnDestroy {
   localMatches: Match[] = [];
   quickMatches: FirestoreQuickMatch[] = [];
+  friendBattleMatches: FriendBattleMatch[] = [];
   errorMessage = '';
-  private subscription?: Subscription;
+  private subscription = new Subscription();
 
   constructor(
     private readonly multiplayerService: MultiplayerService,
     private readonly quickMatchService: QuickMatchService,
+    private readonly friendBattleService: FriendBattleService,
   ) {}
 
   ngOnInit(): void {
     this.localMatches = this.multiplayerService.getActiveMatches();
-    this.subscription = this.quickMatchService.observeActiveMatches().subscribe({
+    this.subscription.add(this.quickMatchService.observeActiveMatches().subscribe({
       next: (matches) => {
         this.quickMatches = matches;
       },
       error: (error) => {
         console.warn('Failed to load active Quick Matches:', error);
       },
-    });
+    }));
+    this.subscription.add(this.friendBattleService.observeMatches().subscribe({
+      next: matches => this.friendBattleMatches = matches.filter(match => match.mode === 'friend-battle' && ['lobby', 'waiting', 'active'].includes(match.status)),
+      error: error => console.warn('Failed to load active Friend Battles:', error),
+    }));
   }
 
   ngOnDestroy(): void {
-    this.subscription?.unsubscribe();
+    this.subscription.unsubscribe();
   }
 
   async deleteQuickMatch(matchId: string): Promise<void> {
@@ -242,6 +257,6 @@ export class ActiveMatchesListComponent implements OnInit, OnDestroy {
   }
 
   get totalMatches(): number {
-    return this.localMatches.length + this.quickMatches.length;
+    return this.localMatches.length + this.quickMatches.length + this.friendBattleMatches.length;
   }
 }

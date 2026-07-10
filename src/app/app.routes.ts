@@ -14,6 +14,8 @@ import { FeaturePage } from './pages/feature.page';
 import { LaunchPage } from './pages/launch.page';
 import { QuizModePage } from './pages/quiz-mode.page';
 import { SettingsPage } from './settings/settings.page';
+import { MatchesPage } from './friend-battle/matches.page';
+import { ProfilePage } from './auth/profile.page';
 
 export const routes: Routes = [
   { path: '', component: LaunchPage, pathMatch: 'full' },
@@ -25,6 +27,8 @@ export const routes: Routes = [
     canActivate: [AuthGuard],
   },
   { path: 'friends', component: FriendsPage, canActivate: [AuthGuard] },
+  { path: 'profile', component: ProfilePage, canActivate: [AuthGuard] },
+  { path: 'matches', component: MatchesPage, canActivate: [AuthGuard] },
   {
     path: 'multiplayer/lobby/:id',
     component: MatchLobbyPage,

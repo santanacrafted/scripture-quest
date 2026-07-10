@@ -20,7 +20,7 @@ export class UserService {
   private usersCollection = collection(firebaseDb, 'users');
 
   async createUser(user: AppUser): Promise<void> {
-    await setDoc(doc(firebaseDb, 'users', user.uid), user);
+    await setDoc(doc(firebaseDb, 'users', user.uid), {...user,usernameLowercase:user.username.trim().toLowerCase(),displayNameLowercase:user.displayName.trim().toLowerCase()});
   }
 
   async getUserByUid(uid: string): Promise<AppUser | null> {

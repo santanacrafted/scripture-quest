@@ -44,6 +44,30 @@
       ]
     },
     {
+      "collectionGroup": "friendRequests", "queryScope": "COLLECTION",
+      "fields": [{"fieldPath":"recipientId","order":"ASCENDING"},{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]
+    },
+    {
+      "collectionGroup": "friendRequests", "queryScope": "COLLECTION",
+      "fields": [{"fieldPath":"senderId","order":"ASCENDING"},{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]
+    },
+    {
+      "collectionGroup": "battleInvitations", "queryScope": "COLLECTION",
+      "fields": [{"fieldPath":"recipientId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]
+    },
+    {
+      "collectionGroup": "battleInvitations", "queryScope": "COLLECTION",
+      "fields": [{"fieldPath":"challengerId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]
+    },
+    {
+      "collectionGroup": "battleInvitations", "queryScope": "COLLECTION",
+      "fields": [{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"expiresAt","order":"ASCENDING"}]
+    },
+    {
+      "collectionGroup": "matches", "queryScope": "COLLECTION",
+      "fields": [{"fieldPath":"playerIds","arrayConfig":"CONTAINS"},{"fieldPath":"updatedAt","order":"DESCENDING"}]
+    },
+    {
       "collectionGroup": "matches",
       "queryScope": "COLLECTION",
       "fields": [

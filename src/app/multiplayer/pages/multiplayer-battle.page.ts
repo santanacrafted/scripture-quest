@@ -88,7 +88,7 @@ export class MultiplayerBattlePage implements OnInit {
       description: 'Review your past battles and stats.',
       icon: '📜',
       color: 'teal',
-      onClick: () => this.navigateTo('/battle-history'),
+      onClick: () => this.navigateTo('/matches'),
     },
   ];
 
