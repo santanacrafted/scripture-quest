@@ -105,6 +105,8 @@ export class MatchResultPage implements OnInit {
   }
 
   getPlayerProgress(): Record<string, { current: number; target: number; completed: boolean }> {
-    return this.match?.categoryProgress['player-1'] ?? {};
+    if (!this.match) return {};
+    const id = this.match.playerIds[0];
+    return Object.fromEntries(this.match.playerState[id].lights.map(light => [light, {current:1,target:1,completed:true}]));
   }
 }

@@ -8,6 +8,7 @@ import { MatchPlayPage } from './multiplayer/pages/match-play.page';
 import { MatchResultPage } from './multiplayer/pages/match-result.page';
 import { MultiplayerHomePage } from './multiplayer/pages/multiplayer-home.page';
 import { QuickMatchSearchPage } from './multiplayer/pages/quick-match-search.page';
+import { MatchBoardPage } from './multiplayer/pages/match-board.page';
 import { BibleReadyPage } from './pages/bible-ready.page';
 import { DailyQuestPage } from './pages/daily-quest.page';
 import { FeaturePage } from './pages/feature.page';
@@ -21,6 +22,11 @@ export const routes: Routes = [
   { path: '', component: LaunchPage, pathMatch: 'full' },
   { path: 'login', component: LoginPage, data: { mode: 'login' } },
   { path: 'register', component: LoginPage, data: { mode: 'register' } },
+  {
+    path: 'multiplayer/board/:id',
+    component: MatchBoardPage,
+    canActivate: [AuthGuard],
+  },
   {
     path: 'multiplayer',
     component: MultiplayerHomePage,

@@ -8,6 +8,7 @@ import {
   MenuCardConfig,
 } from '../../components/menu-card.component';
 import { ActiveMatchesListComponent } from '../components/active-matches-list.component';
+import { MultiplayerService } from '../multiplayer.service';
 
 @Component({
   selector: 'app-multiplayer-battle-page',
@@ -74,7 +75,7 @@ export class MultiplayerBattlePage implements OnInit {
       description: 'Find a random opponent and start battling.',
       icon: '⚔️',
       color: 'green',
-      onClick: () => this.navigateTo('/multiplayer/quick-match'),
+      onClick: () => this.startQuickMatch(),
     },
     {
       title: 'Friend Battle',
@@ -94,6 +95,7 @@ export class MultiplayerBattlePage implements OnInit {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly multiplayerService: MultiplayerService,
     private readonly router: Router,
   ) {}
 
@@ -105,6 +107,14 @@ export class MultiplayerBattlePage implements OnInit {
 
   navigateTo(route: string): void {
     this.router.navigate([route]);
+  }
+
+  startQuickMatch(): void {
+    const match = this.multiplayerService.createRandomMatch(
+      this.currentUser?.uid ?? 'player-1',
+      this.currentUser?.displayName ?? 'You',
+    );
+    this.router.navigate(['/multiplayer/board', match.id]);
   }
 
   goHome(): void {

@@ -38,7 +38,7 @@ import { FriendBattleMatch } from '../../friend-battle/friend-battle.models';
                 {{ match.playerIds.length }}/2 explorers · {{ match.matchmaking.source === 'live-queue' ? 'Live queue' : 'Recent player' }}
               </p>
             </div>
-            <a class="open-link" [routerLink]="['/multiplayer/lobby', match.id]">Open</a>
+            <a class="open-link" [routerLink]="['/multiplayer/board', match.id]">Open</a>
           </article>
 
           <article *ngFor="let match of friendBattleMatches" class="match-row">

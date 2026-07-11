@@ -1,89 +1,24 @@
-export type MultiplayerStatus =
-  | 'waiting_for_opponent'
-  | 'active'
-  | 'completed'
-  | 'abandoned';
+export type MultiplayerStatus = 'waiting_for_opponent' | 'active' | 'completed' | 'abandoned';
+export interface CategoryProgress { current:number; target:number; completed:boolean; }
+export interface MatchCategoryProgressMap { [category:string]:CategoryProgress; }
+export type MatchCategory = 'characters' | 'scripture' | 'stories' | 'places' | 'knowledge';
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
+export type QuestionType = 'multiple_choice' | 'verse_completion' | 'reference_match' | 'who_am_i' | 'who_said_it' | 'sequence' | 'map_challenge' | 'emoji_challenge' | 'true_false' | 'odd_one_out' | 'what_happens_next' | 'arrange_the_verse';
+export type TurnPhase = 'spin' | 'question' | 'light_challenge' | 'trial' | 'complete';
 
-export type MatchCategory =
-  | 'old_testament'
-  | 'new_testament'
-  | 'jesus_and_gospels'
-  | 'bible_characters'
-  | 'prophets_and_kings'
-  | 'memory_verses';
-
-export interface CategoryProgress {
-  current: number;
-  target: number;
-  completed: boolean;
-}
-
-export interface MatchCategoryProgressMap {
-  [category: string]: CategoryProgress;
-}
-
+export interface PlayerLightState { sparks: number; lights: MatchCategory[]; }
+export interface TrialState { category: MatchCategory; challengerId: string; defenderId: string; question: number; challengerScore: number; defenderScore: number; }
 export interface Match {
-  id: string;
-  playerIds: string[];
-  currentPlayerId: string | null;
-  winnerId: string | null;
-  status: MultiplayerStatus;
-  createdAt: string;
-  updatedAt: string;
-  completedAt: string | null;
-  categoryProgress: Record<string, MatchCategoryProgressMap>;
-  lastTurnSummary: string | null;
-  inviteCode: string | null;
+  id: string; playerIds: string[]; playerNames: Record<string,string>; currentPlayerId: string | null;
+  winnerId: string | null; status: MultiplayerStatus; phase: TurnPhase; selectedCategory: MatchCategory | null;
+  playerState: Record<string,PlayerLightState>; trial: TrialState | null; createdAt: string; updatedAt: string;
+  completedAt: string | null; lastTurnSummary: string | null; mode: 'quick' | 'friend';
+  inviteCode?: string | null; categoryProgress?: Record<string,MatchCategoryProgressMap>;
 }
+export interface MatchTurn { id:string; matchId:string; playerId:string; questionId:string; selectedAnswer:string; isCorrect:boolean; category:MatchCategory; startedAt:string; answeredAt:string; timeExpired:boolean; }
+export interface Question { id:string; category:MatchCategory; questionType:QuestionType; difficulty:Difficulty; text:string; choices:string[]; correctAnswer:string; reference:string; explanation:string; }
 
-export interface MatchTurn {
-  id: string;
-  matchId: string;
-  playerId: string;
-  questionId: string;
-  selectedAnswer: string;
-  isCorrect: boolean;
-  category: MatchCategory;
-  startedAt: string;
-  answeredAt: string;
-  timeExpired: boolean;
-}
-
-export interface Question {
-  id: string;
-  category: MatchCategory;
-  difficulty: 'easy' | 'medium' | 'hard';
-  text: string;
-  choices: string[];
-  correctAnswer: string;
-  reference: string;
-  explanation: string;
-}
-
-export interface FriendInvite {
-  id: string;
-  fromPlayerId: string;
-  toPlayerId: string | null;
-  inviteCode: string;
-  matchId: string;
-  status: 'pending' | 'accepted' | 'expired';
-  createdAt: string;
-}
-
-export const MULTIPLAYER_CATEGORIES: MatchCategory[] = [
-  'old_testament',
-  'new_testament',
-  'jesus_and_gospels',
-  'bible_characters',
-  'prophets_and_kings',
-  'memory_verses',
-];
-
-export const CATEGORY_LABELS: Record<MatchCategory, string> = {
-  old_testament: 'Old Testament',
-  new_testament: 'New Testament',
-  jesus_and_gospels: 'Jesus & Gospels',
-  bible_characters: 'Bible Characters',
-  prophets_and_kings: 'Prophets & Kings',
-  memory_verses: 'Memory Verses',
-};
+export const MULTIPLAYER_CATEGORIES: MatchCategory[] = ['characters','scripture','stories','places','knowledge'];
+export const CATEGORY_LABELS: Record<MatchCategory,string> = { characters:'Characters', scripture:'Scripture', stories:'Stories & Events', places:'Places', knowledge:'Bible Knowledge' };
+export const CATEGORY_ICONS: Record<MatchCategory,string> = { characters:'👤', scripture:'📖', stories:'🏛', places:'🗺', knowledge:'🧠' };
+export const CATEGORY_COLORS: Record<MatchCategory,string> = { characters:'#f59e4a', scripture:'#4dd6a7', stories:'#b978ed', places:'#4aa9f5', knowledge:'#f0c94a' };
