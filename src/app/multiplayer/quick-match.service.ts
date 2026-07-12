@@ -112,8 +112,28 @@ export class QuickMatchService {
     return snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as FirestoreQuickMatch) : null;
   }
 
+  watchMatch(matchId: string): Observable<FirestoreQuickMatch | null> {
+    return new Observable(subscriber => onSnapshot(
+      doc(firebaseDb, 'matches', matchId),
+      snapshot => subscriber.next(snapshot.exists() ? ({ id: snapshot.id, ...snapshot.data() } as FirestoreQuickMatch) : null),
+      error => subscriber.error(error),
+    ));
+  }
+
+  async spinWheel(matchId: string): Promise<void> {
+    await this.callFunction('spinMatchWheel', { matchId });
+  }
+
+  async submitAnswer(matchId: string, answer: string): Promise<import('./quick-match.models').MatchAnswerResult> {
+    return this.callFunction('submitAnswer', { matchId, answer }) as unknown as Promise<import('./quick-match.models').MatchAnswerResult>;
+  }
+
   async deleteMatchForTesting(matchId: string): Promise<void> {
     await this.callFunction('deleteMatchForTesting', { matchId });
+  }
+
+  async forfeitMatch(matchId: string): Promise<void> {
+    await this.callFunction('forfeitMatch', { matchId });
   }
 
   observeActiveMatches(): Observable<FirestoreQuickMatch[]> {
@@ -129,7 +149,7 @@ export class QuickMatchService {
         (snapshot) => {
           const matches = snapshot.docs
             .map((entry) => ({ id: entry.id, ...entry.data() }) as FirestoreQuickMatch)
-            .filter((match) => match.status === 'waiting' || match.status === 'active')
+            .filter((match) => ['waiting', 'waiting_for_opponent', 'active'].includes(match.status))
             .sort((left, right) => right.createdAt.toMillis() - left.createdAt.toMillis());
           subscriber.next(matches);
         },
@@ -164,7 +184,7 @@ export class QuickMatchService {
   }
 
   private async callFunction(
-    name: 'joinQuickMatchQueue' | 'attemptQuickMatch' | 'cancelQuickMatch' | 'deleteMatchForTesting',
+    name: 'joinQuickMatchQueue' | 'attemptQuickMatch' | 'cancelQuickMatch' | 'deleteMatchForTesting' | 'forfeitMatch' | 'spinMatchWheel' | 'submitAnswer',
     payload: Record<string, unknown> = {},
   ): Promise<QuickMatchFunctionResult> {
     const callable = httpsCallable<Record<string, unknown>, QuickMatchFunctionResult>(firebaseFunctions, name);

@@ -29,11 +29,15 @@ export interface QuickMatchFunctionResult {
 export interface FirestoreQuickMatch {
   id: string;
   mode: 'quick-match';
-  status: 'waiting' | 'active' | 'completed' | 'cancelled';
+  status: 'waiting' | 'waiting_for_opponent' | 'active' | 'completed' | 'cancelled';
   isAsynchronous: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
-  currentTurnPlayerId: string;
+  currentTurnPlayerId: string | null;
+  phase: 'spin' | 'light_challenge' | 'question' | 'complete';
+  selectedCategory: import('./multiplayer.models').MatchCategory | null;
+  currentQuestion: { id: string; text: string; choices: string[]; questionType: string; difficulty: string; kind?: 'standard' | 'light_challenge' } | null;
+  lastTurnSummary: string;
   roundNumber: number;
   totalRounds: number;
   playerIds: string[];
@@ -43,6 +47,8 @@ export interface FirestoreQuickMatch {
     avatarUrl: string | null;
     ratingAtMatchStart: number;
     score: number;
+    sparks: number;
+    lights: import('./multiplayer.models').MatchCategory[];
     status: 'ready' | 'playing' | 'finished';
   }>;
   matchmaking: {
@@ -50,4 +56,13 @@ export interface FirestoreQuickMatch {
     searchDurationMs: number;
     source: 'live-queue' | 'recent-player';
   };
+}
+
+export interface MatchAnswerResult {
+  matchId: string;
+  correct: boolean;
+  waitingForOpponent: boolean;
+  correctAnswer: string;
+  explanation: string;
+  reference: string;
 }

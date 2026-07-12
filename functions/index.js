@@ -16,9 +16,12 @@ const MATCH_COLLECTION = 'matches';
 const USER_COLLECTION = 'users';
 const TOTAL_ROUNDS = 6;
 const QUEUE_TTL_MS = 90 * 1000;
-const LIVE_SEARCH_WINDOW_MS = 30 * 1000;
+// A player keeps their place until the queue entry itself expires. Quick Match
+// must not silently replace a live queue search after an arbitrary UI timeout.
+const LIVE_SEARCH_WINDOW_MS = QUEUE_TTL_MS;
 const RECENT_PLAYER_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_PENDING_ASYNC_MATCHES = 10;
+const MAX_SIMULTANEOUS_QUICK_MATCHES = 5;
 const CANDIDATE_LIMIT = 30;
 const EXPIRE_BATCH_LIMIT = 100;
 // Bootstrap allowlist only. Access to admin data is always enforced with the
@@ -44,13 +47,6 @@ exports.bootstrapContentAdmin = functions.https.onCall(requireAuth(async (_data,
   functions.logger.info('content_admin_claim_granted', { uid: user.uid, email });
   return { admin: true, refreshToken: true };
 }));
-
-const MATCH_STAGES = [
-  { afterMs: 0, ratingRange: 100, preferSameLanguage: true },
-  { afterMs: 10 * 1000, ratingRange: 250, preferSameLanguage: false },
-  { afterMs: 20 * 1000, ratingRange: 500, preferSameLanguage: false },
-  { afterMs: 30 * 1000, ratingRange: Number.POSITIVE_INFINITY, preferSameLanguage: false },
-];
 
 exports.createMatch = functions.https.onCall(requireAuth(async (data, context) => ({
   status: 'queued',
@@ -99,6 +95,36 @@ exports.cancelQuickMatch = functions.https.onCall(requireAuth(async (data, conte
 
     functions.logger.info('quick_match_queue_cancelled', { playerId });
     return { status: 'cancelled', matchId: null };
+  });
+}));
+
+exports.forfeitMatch = functions.https.onCall(requireAuth(async (data, context) => {
+  const matchId = requireString(data?.matchId, 'matchId');
+  const playerId = context.auth.uid;
+  const matchRef = db.collection(MATCH_COLLECTION).doc(matchId);
+
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(matchRef);
+    if (!snapshot.exists) {
+      return { status: 'cancelled', matchId };
+    }
+    const match = snapshot.data();
+    if (!Array.isArray(match.playerIds) || !match.playerIds.includes(playerId)) {
+      throw new functions.https.HttpsError('permission-denied', 'Only a participant can forfeit this match.');
+    }
+    if (['completed', 'cancelled'].includes(match.status)) {
+      return { status: match.status, matchId };
+    }
+    const winnerId = match.playerIds.find((id) => id !== playerId) ?? null;
+    transaction.update(matchRef, {
+      status: 'cancelled',
+      forfeitedBy: playerId,
+      winnerId,
+      currentTurnPlayerId: null,
+      completedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return { status: 'cancelled', matchId };
   });
 }));
 
@@ -216,9 +242,124 @@ exports.notifyMatchedPlayer = functions.firestore
     }
   });
 
-exports.submitAnswer = functions.https.onCall(async () => ({
-  status: 'queued',
-  note: 'Cloud Function scaffold ready for trusted answer validation.',
+exports.notifyPlayerTurn = functions.firestore
+  .document('matches/{matchId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const match = change.after.data();
+    const playerId = match?.currentTurnPlayerId;
+    if (!playerId || playerId === before?.currentTurnPlayerId || match.status !== 'active') {
+      return null;
+    }
+    const player = await db.collection(USER_COLLECTION).doc(playerId).get();
+    const token = player.get('notificationToken') || player.get('fcmToken');
+    if (!token) return null;
+    try {
+      await admin.messaging().send({
+        token,
+        notification: { title: 'Your turn', body: 'Spin the wheel and continue your Scripture Quest battle.' },
+        data: { matchId: context.params.matchId, mode: match.mode || MODE, route: `/multiplayer/board/${context.params.matchId}` },
+      });
+    } catch (error) {
+      functions.logger.warn('turn_notification_failed', { matchId: context.params.matchId, playerId, code: error?.code });
+    }
+    return null;
+  });
+
+exports.spinMatchWheel = functions.https.onCall(requireAuth(async (data, context) => {
+  const matchId = requireString(data?.matchId, 'matchId');
+  const matchRef = db.collection(MATCH_COLLECTION).doc(matchId);
+  const categories = ['characters', 'scripture', 'stories', 'places', 'bible_knowledge'];
+  let category = categories[Math.floor(Math.random() * categories.length)];
+  const matchBeforeSpin = await matchRef.get();
+  if (!matchBeforeSpin.exists) throw new functions.https.HttpsError('not-found', 'Match not found.');
+  const requestedPhase = matchBeforeSpin.get('phase');
+  if (requestedPhase === 'light_challenge' && matchBeforeSpin.get('selectedCategory')) {
+    category = matchBeforeSpin.get('selectedCategory') === 'knowledge' ? 'bible_knowledge' : matchBeforeSpin.get('selectedCategory');
+  }
+  const questions = await db.collection('questions').where('category', '==', category).limit(100).get();
+  const playableQuestions = questions.docs.filter((doc) => doc.get('status') === 'published' && doc.get('isActive') === true);
+  if (!playableQuestions.length) throw new functions.https.HttpsError('failed-precondition', 'No published questions are available for this category.');
+  const questionSnapshot = playableQuestions[Math.floor(Math.random() * playableQuestions.length)];
+  const question = questionSnapshot.data();
+  const publicQuestion = publicMatchQuestion(questionSnapshot.id, question, playableQuestions);
+
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(matchRef);
+    if (!snapshot.exists) throw new functions.https.HttpsError('not-found', 'Match not found.');
+    const match = snapshot.data();
+    if (!['spin', 'light_challenge'].includes(match.phase)) {
+      throw new functions.https.HttpsError('failed-precondition', 'The wheel cannot be used during this phase.');
+    }
+    assertMatchTurn(match, context.auth.uid, match.phase);
+    transaction.update(matchRef, {
+      status: 'active', phase: 'question', selectedCategory: category === 'bible_knowledge' ? 'knowledge' : category,
+      currentQuestion: { ...publicQuestion, kind: match.phase === 'light_challenge' ? 'light_challenge' : 'standard' },
+      lastTurnSummary: match.phase === 'light_challenge' ? 'Answer correctly to capture the Light!' : `The wheel landed on ${category}.`, updatedAt: FieldValue.serverTimestamp(),
+    });
+    return { matchId, category, question: publicQuestion };
+  });
+}));
+
+exports.submitAnswer = functions.https.onCall(requireAuth(async (data, context) => {
+  const matchId = requireString(data?.matchId, 'matchId');
+  const answer = requireString(data?.answer, 'answer');
+  const matchRef = db.collection(MATCH_COLLECTION).doc(matchId);
+  return db.runTransaction(async (transaction) => {
+    const matchSnapshot = await transaction.get(matchRef);
+    if (!matchSnapshot.exists) throw new functions.https.HttpsError('not-found', 'Match not found.');
+    const match = matchSnapshot.data();
+    assertMatchTurn(match, context.auth.uid, 'question');
+    const questionId = match.currentQuestion?.id;
+    if (!questionId) throw new functions.https.HttpsError('failed-precondition', 'No active question was found.');
+    const questionSnapshot = await transaction.get(db.collection('questions').doc(questionId));
+    if (!questionSnapshot.exists) throw new functions.https.HttpsError('not-found', 'Question not found.');
+    const question = questionSnapshot.data();
+    const correctAnswer = correctAnswerForQuestion(question);
+    const correct = answer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+    const opponentId = match.playerIds.find((id) => id !== context.auth.uid);
+    const sparks = Number(match.players?.[context.auth.uid]?.sparks || 0);
+    const isLightChallenge = match.currentQuestion?.kind === 'light_challenge';
+    const updates = {
+      phase: 'spin', selectedCategory: null, currentQuestion: null,
+      updatedAt: FieldValue.serverTimestamp(),
+      lastTurnSummary: correct ? 'Correct! You earned a Light Spark and keep your turn.' : 'Incorrect. The turn passes.',
+    };
+    if (isLightChallenge) {
+      updates[`players.${context.auth.uid}.sparks`] = 0;
+      if (correct) {
+        const lights = Array.isArray(match.players?.[context.auth.uid]?.lights) ? match.players[context.auth.uid].lights : [];
+        updates[`players.${context.auth.uid}.lights`] = [...new Set([...lights, match.selectedCategory])];
+        updates.lastTurnSummary = `You captured the ${match.selectedCategory} Light!`;
+      } else if (opponentId) {
+        updates.currentTurnPlayerId = opponentId;
+        updates.lastTurnSummary = 'The Light Challenge was missed. The turn passes.';
+      } else {
+        updates.status = 'waiting_for_opponent';
+        updates.currentTurnPlayerId = null;
+        updates.lastTurnSummary = 'The Light Challenge was missed. Waiting for another explorer.';
+      }
+    } else if (correct) {
+      const nextSparks = Math.min(3, sparks + 1);
+      updates[`players.${context.auth.uid}.sparks`] = nextSparks;
+      if (nextSparks === 3) {
+        updates.phase = 'light_challenge';
+        updates.selectedCategory = match.selectedCategory;
+        updates.lastTurnSummary = 'Lantern charged! Take the Light Challenge.';
+      }
+    } else if (opponentId) {
+      updates[`players.${context.auth.uid}.sparks`] = 0;
+      updates.currentTurnPlayerId = opponentId;
+    }
+    else {
+      updates[`players.${context.auth.uid}.sparks`] = 0;
+      updates.status = 'waiting_for_opponent';
+      updates.currentTurnPlayerId = null;
+      updates.lastTurnSummary = 'Turn complete. Waiting for another explorer to join.';
+    }
+    transaction.update(matchRef, updates);
+    return { matchId, correct, waitingForOpponent: !correct && !opponentId, correctAnswer, explanation: question.explanation || '', reference: question.scriptureReference || '' };
+  });
 }));
 
 exports.expireTurn = functions.https.onCall(async () => ({
@@ -311,6 +452,9 @@ exports.bulkImportQuestions = functions.https.onCall(requireAdmin(async (data, c
 }));
 
 async function joinOrAttemptQuickMatch(playerId) {
+  return joinAsyncQuickMatch(playerId);
+  /* Legacy simultaneous-search implementation retained temporarily for
+     already deployed clients; new clients use the asynchronous match queue. */
   const profile = await loadAuthoritativeProfile(playerId);
   const queueRef = db.collection(QUEUE_COLLECTION).doc(playerId);
   const now = Timestamp.now();
@@ -360,6 +504,82 @@ async function joinOrAttemptQuickMatch(playerId) {
   return attemptQuickMatchForPlayer(playerId, joinResult.searchToken);
 }
 
+async function joinAsyncQuickMatch(playerId) {
+  const profile = await loadAuthoritativeProfile(playerId);
+  const playerMatches = await db.collection(MATCH_COLLECTION)
+    .where('playerIds', 'array-contains', playerId)
+    .get();
+  const openQuickMatches = playerMatches.docs.filter((doc) => {
+    const match = doc.data();
+    return match.mode === MODE && ['active', 'waiting', 'waiting_for_opponent'].includes(match.status);
+  });
+  if (openQuickMatches.length >= MAX_SIMULTANEOUS_QUICK_MATCHES) {
+    throw new functions.https.HttpsError(
+      'resource-exhausted',
+      `You can have up to ${MAX_SIMULTANEOUS_QUICK_MATCHES} Quick Matches at once. Finish or forfeit one before starting another.`,
+    );
+  }
+  const waitingSnapshot = await db.collection(MATCH_COLLECTION)
+    .where('status', '==', 'waiting_for_opponent')
+    .limit(100)
+    .get();
+  const waiting = waitingSnapshot.docs
+    .filter((doc) => doc.get('mode') === MODE)
+    .sort((left, right) => (left.get('updatedAt')?.toMillis?.() || 0) - (right.get('updatedAt')?.toMillis?.() || 0))
+    .slice(0, CANDIDATE_LIMIT);
+
+  for (const candidate of waiting) {
+    const joined = await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(candidate.ref);
+      if (!snapshot.exists) return null;
+      const match = snapshot.data();
+      if (match.status !== 'waiting_for_opponent' || match.mode !== MODE || match.playerIds.length !== 1 || match.playerIds.includes(playerId)) return null;
+      const hostId = match.playerIds[0];
+      transaction.update(candidate.ref, {
+        status: 'active',
+        playerIds: [hostId, playerId],
+        [`players.${playerId}`]: buildMatchPlayer(profile),
+        currentTurnPlayerId: playerId,
+        phase: 'spin',
+        selectedCategory: null,
+        currentQuestion: null,
+        lastTurnSummary: 'An explorer joined. Spin the wheel!',
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return candidate.id;
+    });
+    if (joined) {
+      await setMatchedQueueEntry(playerId, profile, joined);
+      return { status: 'matched', matchId: joined, searchToken: createSearchToken() };
+    }
+  }
+
+  const matchRef = db.collection(MATCH_COLLECTION).doc();
+  const searchToken = createSearchToken();
+  const createdAt = FieldValue.serverTimestamp();
+  await matchRef.set({
+    id: matchRef.id, mode: MODE, status: 'active', isAsynchronous: true,
+    createdAt, updatedAt: createdAt, currentTurnPlayerId: playerId,
+    phase: 'spin', selectedCategory: null, currentQuestion: null,
+    lastTurnSummary: 'Take your turn. If it passes, another explorer can join.',
+    roundNumber: 1, totalRounds: TOTAL_ROUNDS, playerIds: [playerId],
+    players: { [playerId]: buildMatchPlayer(profile) },
+    matchmaking: { ratingDifference: 0, searchDurationMs: 0, source: 'live-queue' },
+  });
+  await setMatchedQueueEntry(playerId, profile, matchRef.id, searchToken);
+  return { status: 'matched', matchId: matchRef.id, searchToken };
+}
+
+async function setMatchedQueueEntry(playerId, profile, matchId, searchToken = createSearchToken()) {
+  await db.collection(QUEUE_COLLECTION).doc(playerId).set({
+    playerId, status: 'matched', mode: MODE, rating: profile.rating, level: profile.level,
+    region: profile.region, language: profile.language, displayName: profile.displayName,
+    username: profile.username, avatarUrl: profile.avatarUrl, createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + QUEUE_TTL_MS),
+    matchId, searchToken,
+  });
+}
+
 async function attemptQuickMatchForPlayer(playerId, searchToken) {
   const queueRef = db.collection(QUEUE_COLLECTION).doc(playerId);
   const queueSnapshot = await queueRef.get();
@@ -381,26 +601,10 @@ async function attemptQuickMatchForPlayer(playerId, searchToken) {
   }
 
   const elapsedMs = Math.max(0, Date.now() - queue.createdAt.toMillis());
-  const stage = getStage(elapsedMs);
-  const candidates = await findLiveQueueCandidates(playerId, queue, stage);
+  const candidates = await findLiveQueueCandidates(playerId);
   const liveResult = await claimCandidateInTransaction(playerId, searchToken, candidates);
   if (liveResult.status === 'matched') {
     return liveResult;
-  }
-
-  if (elapsedMs >= LIVE_SEARCH_WINDOW_MS) {
-    const fallbackResult = await createRecentPlayerChallenge(playerId, searchToken, queue);
-    if (fallbackResult.status === 'matched') {
-      return fallbackResult;
-    }
-
-    await queueRef.update({
-      status: 'expired',
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-
-    functions.logger.info('quick_match_search_expired', { playerId });
-    return { status: 'expired', matchId: null, searchToken };
   }
 
   return {
@@ -412,23 +616,19 @@ async function attemptQuickMatchForPlayer(playerId, searchToken) {
   };
 }
 
-async function findLiveQueueCandidates(playerId, queue, stage) {
+async function findLiveQueueCandidates(playerId) {
   const baseQuery = db
     .collection(QUEUE_COLLECTION)
     .where('status', '==', 'searching')
     .where('mode', '==', MODE)
-    .orderBy('createdAt', 'asc')
-    .limit(CANDIDATE_LIMIT);
+    .orderBy('createdAt', 'asc');
 
-  const sameLanguageSnapshot = stage.preferSameLanguage
-    ? await baseQuery.where('language', '==', queue.language).get()
-    : await baseQuery.get();
+  const snapshot = await baseQuery.get();
 
-  return sameLanguageSnapshot.docs
+  return snapshot.docs
     .filter((doc) => doc.id !== playerId)
     .map((doc) => ({ id: doc.id, ref: doc.ref, data: doc.data() }))
-    .filter((candidate) => candidate.data.expiresAt?.toMillis() > Date.now())
-    .filter((candidate) => Math.abs((candidate.data.rating ?? DEFAULT_RATING) - queue.rating) <= stage.ratingRange);
+    .filter((candidate) => candidate.data.expiresAt?.toMillis() > Date.now());
 }
 
 async function claimCandidateInTransaction(playerId, searchToken, candidates) {
@@ -449,9 +649,8 @@ async function claimCandidateInTransaction(playerId, searchToken, candidates) {
           return null;
         }
 
-        const stage = getStage(Date.now() - requester.createdAt.toMillis());
         const ratingDifference = Math.abs((opponent.rating ?? DEFAULT_RATING) - (requester.rating ?? DEFAULT_RATING));
-        if (requester.mode !== opponent.mode || ratingDifference > stage.ratingRange) {
+        if (requester.mode !== opponent.mode) {
           return null;
         }
 
@@ -566,11 +765,15 @@ function buildMatch(matchId, playerOne, playerTwo, source, ratingDifference) {
   return {
     id: matchId,
     mode: MODE,
-    status: 'waiting',
+    status: 'active',
     isAsynchronous: true,
     createdAt,
     updatedAt: createdAt,
     currentTurnPlayerId: playerOneId,
+    phase: 'spin',
+    selectedCategory: null,
+    currentQuestion: null,
+    lastTurnSummary: 'Your lantern is ready. Spin the wheel!',
     roundNumber: 1,
     totalRounds: TOTAL_ROUNDS,
     playerIds: [playerOneId, playerTwoId],
@@ -593,8 +796,47 @@ function buildMatchPlayer(player) {
     avatarUrl: player.avatarUrl ?? null,
     ratingAtMatchStart: player.rating ?? DEFAULT_RATING,
     score: 0,
+    sparks: 0,
+    lights: [],
     status: 'ready',
   };
+}
+
+function assertMatchTurn(match, playerId, phase) {
+  if (!Array.isArray(match.playerIds) || !match.playerIds.includes(playerId)) {
+    throw new functions.https.HttpsError('permission-denied', 'You are not a participant in this match.');
+  }
+  if (!['waiting', 'active'].includes(match.status) || match.currentTurnPlayerId !== playerId || match.phase !== phase) {
+    throw new functions.https.HttpsError('failed-precondition', 'It is not your turn for this action.');
+  }
+}
+
+function publicMatchQuestion(id, question, questionPool = []) {
+  const answer = question.answerData || {};
+  let choices = [];
+  if (answer.type === 'multiple_choice') choices = (answer.options || []).map((option) => option.text);
+  else if (answer.type === 'true_false') choices = ['True', 'False'];
+  else if (answer.type === 'text') choices = [answer.primaryAnswer, ...(answer.distractors || [])];
+  const correct = correctAnswerForQuestion(question);
+  const poolAnswers = questionPool
+    .filter((snapshot) => snapshot.id !== id)
+    .map((snapshot) => correctAnswerForQuestion(snapshot.data()))
+    .filter(Boolean);
+  const fallbacks = ['Moses', 'Jerusalem', 'Genesis', 'None of these'];
+  choices = [...new Map([...choices, correct, ...poolAnswers, ...fallbacks]
+    .filter(Boolean).map((choice) => [String(choice).trim().toLowerCase(), String(choice).trim()])).values()]
+    .slice(0, 4)
+    .sort(() => Math.random() - 0.5);
+  return { id, text: question.prompt, choices, questionType: question.questionType, difficulty: question.difficulty };
+}
+
+function correctAnswerForQuestion(question) {
+  const answer = question.answerData || {};
+  if (answer.type === 'multiple_choice') {
+    return (answer.options || []).find((option) => (answer.correctOptionIds || []).includes(option.id))?.text || '';
+  }
+  if (answer.type === 'true_false') return answer.correctValue ? 'True' : 'False';
+  return answer.primaryAnswer || '';
 }
 
 async function loadAuthoritativeProfile(playerId) {
@@ -626,10 +868,6 @@ function normalizeProfile(playerId, data) {
     banned: data.banned === true,
     accountStatus: data.accountStatus ?? 'active',
   };
-}
-
-function getStage(elapsedMs) {
-  return [...MATCH_STAGES].reverse().find((stage) => elapsedMs >= stage.afterMs) ?? MATCH_STAGES[0];
 }
 
 function isClaimableRequester(queue, playerId, searchToken) {

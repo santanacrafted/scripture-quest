@@ -262,7 +262,9 @@ import { QuickMatchService } from '../quick-match.service';
   `],
 })
 export class QuickMatchSearchPage implements OnInit, OnDestroy {
-  private readonly searchWindowSeconds = 30;
+  // Keep the UI aligned with the server-side queue TTL so a waiting player
+  // does not lose their FIFO position while the search is still valid.
+  private readonly searchWindowSeconds = 90;
   readonly messages = [
     'Searching nearby kingdoms...',
     'Looking for another explorer...',
@@ -282,6 +284,8 @@ export class QuickMatchSearchPage implements OnInit, OnDestroy {
   private timerSubscription?: Subscription;
   private attemptTimer: ReturnType<typeof setTimeout> | null = null;
   private resumeListener?: { remove: () => Promise<void> };
+  private queueReady = false;
+  private readonly startNewMatch = history.state?.startNewMatch === true;
 
   constructor(
     private readonly quickMatchService: QuickMatchService,
@@ -359,14 +363,38 @@ export class QuickMatchSearchPage implements OnInit, OnDestroy {
   }
 
   private async startOrResume(): Promise<void> {
+    if (this.startNewMatch) {
+      this.quickMatchService.clearSearch();
+      this.queueReady = true;
+      await this.startSearch(true);
+      return;
+    }
     try {
       const queue = await this.quickMatchService.resumeSearch();
       if (queue?.matchId) {
-        await this.navigateToMatch(queue.matchId);
+        const match = await this.quickMatchService.observeMatch(queue.matchId);
+        const userId = queue.playerId;
+        const isPlayable = !!match
+          && match.playerIds?.includes(userId)
+          && match.playerIds.length >= 1
+          && match.status === 'active'
+          && !!match.currentTurnPlayerId
+          && ['spin', 'light_challenge', 'question'].includes(match.phase);
+        if (isPlayable) {
+          await this.navigateToMatch(queue.matchId);
+          return;
+        }
+
+        // Legacy queue entries can reference browser-era or incomplete matches.
+        // Starting again replaces that queue document with a fresh search token.
+        this.quickMatchService.clearSearch();
+        this.queueReady = true;
+        await this.startSearch(true);
         return;
       }
 
       if (queue?.status === 'searching') {
+        this.queueReady = true;
         this.searchStartedAt = queue.createdAt.toMillis();
         this.resetVisibleSearch(false);
         this.scheduleAttempt(600);
@@ -376,6 +404,7 @@ export class QuickMatchSearchPage implements OnInit, OnDestroy {
       this.quickMatchService.clearSearch();
     }
 
+    this.queueReady = true;
     await this.startSearch(true);
   }
 
@@ -440,7 +469,7 @@ export class QuickMatchSearchPage implements OnInit, OnDestroy {
   }
 
   private handleQueueState(queue: QuickMatchQueueEntry | null): void {
-    if (!queue) {
+    if (!this.queueReady || !queue) {
       return;
     }
 
@@ -471,7 +500,7 @@ export class QuickMatchSearchPage implements OnInit, OnDestroy {
 
   private async navigateToMatch(matchId: string): Promise<void> {
     this.finishSearch('matched');
-    await this.router.navigate(['/multiplayer/lobby', matchId], { replaceUrl: true });
+    await this.router.navigate(['/multiplayer/board', matchId], { replaceUrl: true });
   }
 
   private startElapsedTimer(): void {

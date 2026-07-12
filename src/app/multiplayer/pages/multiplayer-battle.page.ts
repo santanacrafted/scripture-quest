@@ -110,11 +110,7 @@ export class MultiplayerBattlePage implements OnInit {
   }
 
   startQuickMatch(): void {
-    const match = this.multiplayerService.createRandomMatch(
-      this.currentUser?.uid ?? 'player-1',
-      this.currentUser?.displayName ?? 'You',
-    );
-    this.router.navigate(['/multiplayer/board', match.id]);
+    this.router.navigate(['/multiplayer/quick-match'], { state: { startNewMatch: true } });
   }
 
   goHome(): void {

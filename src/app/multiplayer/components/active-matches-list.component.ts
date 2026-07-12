@@ -8,6 +8,7 @@ import { FirestoreQuickMatch } from '../quick-match.models';
 import { QuickMatchService } from '../quick-match.service';
 import { FriendBattleService } from '../../friend-battle/friend-battle.service';
 import { FriendBattleMatch } from '../../friend-battle/friend-battle.models';
+import { firebaseAuth } from '../../firebase';
 
 @Component({
   selector: 'app-active-matches-list',
@@ -38,7 +39,8 @@ import { FriendBattleMatch } from '../../friend-battle/friend-battle.models';
                 {{ match.playerIds.length }}/2 explorers · {{ match.matchmaking.source === 'live-queue' ? 'Live queue' : 'Recent player' }}
               </p>
             </div>
-            <a class="open-link" [routerLink]="['/multiplayer/board', match.id]">Open</a>
+            <a class="open-link" [routerLink]="['/multiplayer/board', match.id]">{{ quickMatchAction(match) }}</a>
+            <button class="delete-button" type="button" (click)="forfeitQuickMatch(match.id)">Forfeit</button>
           </article>
 
           <article *ngFor="let match of friendBattleMatches" class="match-row">
@@ -47,16 +49,9 @@ import { FriendBattleMatch } from '../../friend-battle/friend-battle.models';
               <p class="match-meta">{{ match.playerIds.length }}/2 explorers · {{ match.status === 'lobby' ? 'Lobby' : 'Round ' + match.roundNumber }}</p>
             </div>
             <a class="open-link" [routerLink]="['/multiplayer/lobby', match.id]">Open</a>
+            <button class="delete-button" type="button" (click)="forfeitFriendMatch(match.id)">Forfeit</button>
           </article>
 
-          <article *ngFor="let match of localMatches" class="match-row">
-            <div class="match-copy">
-              <p class="match-title">Friend Battle</p>
-              <p class="match-meta">{{ match.playerIds.length }}/2 explorers · {{ match.status }}</p>
-            </div>
-            <a class="open-link" [routerLink]="['/multiplayer/lobby', match.id]">Open</a>
-            <button class="delete-button" type="button" (click)="deleteLocalMatch(match.id)">Delete</button>
-          </article>
         </div>
       </ng-template>
     </section>
@@ -221,7 +216,7 @@ export class ActiveMatchesListComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.localMatches = this.multiplayerService.getActiveMatches();
+    this.localMatches = [];
     this.subscription.add(this.quickMatchService.observeActiveMatches().subscribe({
       next: (matches) => {
         this.quickMatches = matches;
@@ -250,13 +245,47 @@ export class ActiveMatchesListComponent implements OnInit, OnDestroy {
     }
   }
 
+  quickMatchAction(match: FirestoreQuickMatch): string {
+    const userId = firebaseAuth.currentUser?.uid;
+    if (match.currentTurnPlayerId === userId) return 'Play turn';
+    if (match.status === 'waiting_for_opponent') return 'Waiting';
+    return "Opponent's turn";
+  }
+
+  async forfeitQuickMatch(matchId: string): Promise<void> {
+    this.errorMessage = '';
+    try {
+      await this.quickMatchService.forfeitMatch(matchId);
+    } catch (error) {
+      console.error('Failed to forfeit Quick Match:', error);
+      this.errorMessage = 'Unable to forfeit this match right now.';
+    }
+  }
+
+  async forfeitFriendMatch(matchId: string): Promise<void> {
+    this.errorMessage = '';
+    try {
+      await this.friendBattleService.forfeitMatch(matchId);
+    } catch (error) {
+      console.error('Failed to forfeit Friend Battle:', error);
+      this.errorMessage = 'Unable to forfeit this match right now.';
+    }
+  }
+
   deleteLocalMatch(matchId: string): void {
     this.errorMessage = '';
     this.multiplayerService.deleteLocalMatch(matchId);
     this.localMatches = this.multiplayerService.getActiveMatches();
   }
 
+  forfeitLocalMatch(match: Match): void {
+    this.errorMessage = '';
+    const playerId = match.playerIds[0];
+    this.multiplayerService.forfeitMatch(match.id, playerId);
+    this.localMatches = this.multiplayerService.getActiveMatches();
+  }
+
   get totalMatches(): number {
-    return this.localMatches.length + this.quickMatches.length + this.friendBattleMatches.length;
+    return this.quickMatches.length + this.friendBattleMatches.length;
   }
 }
