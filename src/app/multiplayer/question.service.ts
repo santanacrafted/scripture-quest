@@ -247,8 +247,9 @@ export class QuestionService {
       correct = answer.correctValue ? 'True' : 'False';
     } else if (answer.type === 'text') {
       correct = answer.primaryAnswer;
-      choices = [correct, ...(answer.acceptedAnswers || [])];
+      choices = [correct, ...(answer.distractors || [])];
     } else return null;
+    choices = [...new Map(choices.filter(Boolean).map((choice:string)=>[choice.trim().toLowerCase(),choice.trim()])).values()] as string[];
     if (choices.length < 4) {
       const fillers = ['Moses', 'Jerusalem', 'Genesis', 'None of these'].filter(
         (x) => x !== correct && !choices.includes(x)

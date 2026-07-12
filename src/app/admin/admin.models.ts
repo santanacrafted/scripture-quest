@@ -50,6 +50,7 @@ export type QuestionAnswerData =
       type: 'text';
       primaryAnswer: string;
       acceptedAnswers: string[];
+      distractors?: string[];
       caseSensitive: boolean;
     }
   | { type: 'sequence'; items: OrderedItem[] }

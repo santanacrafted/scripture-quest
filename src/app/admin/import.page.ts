@@ -302,7 +302,11 @@ export class AdminImportPage {
       : 'Paste a JSON array of question records…';
   }
   parse() {
-    this.rows = this.parser.parse(this.input, this.format);
+    const trimmed = this.input.trim();
+    const detectedFormat: 'csv' | 'json' =
+      trimmed.startsWith('[') || trimmed.startsWith('{') ? 'json' : 'csv';
+    this.format = detectedFormat;
+    this.rows = this.parser.parse(this.input, detectedFormat);
     void this.checkDuplicates();
   }
   async checkDuplicates() {
@@ -338,8 +342,14 @@ export class AdminImportPage {
   async file(e: Event) {
     const f = (e.target as HTMLInputElement).files?.[0];
     if (f) {
-      this.format = f.name.endsWith('.json') ? 'json' : 'csv';
       this.input = await f.text();
+      const trimmed = this.input.trim();
+      this.format =
+        f.name.toLowerCase().endsWith('.json') ||
+        trimmed.startsWith('[') ||
+        trimmed.startsWith('{')
+          ? 'json'
+          : 'csv';
     }
   }
   async import() {

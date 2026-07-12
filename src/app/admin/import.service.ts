@@ -195,7 +195,8 @@ export class ImportService {
     return {
       type: 'text',
       primaryAnswer: r['correct_answer'] || '',
-      acceptedAnswers: this.list(r['accepted_answers']),
+      acceptedAnswers: this.list(r['accepted_answers']).filter(answer=>answer.toLowerCase()!==(r['correct_answer']||'').toLowerCase()),
+      distractors: ['option_a','option_b','option_c','option_d'].map(key=>r[key]).filter(value=>!!value&&value.toLowerCase()!==(r['correct_answer']||'').toLowerCase()),
       caseSensitive: false,
     };
   }

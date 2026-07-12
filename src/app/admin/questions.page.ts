@@ -26,6 +26,27 @@ import { CATEGORIES, StudioQuestion, TYPES } from './admin.models';
         <option *ngFor="let c of categories" [value]="c[0]">{{ c[1] }}</option>
       </select>
     </section>
+    <section class="selection-tools" *ngIf="filtered.length">
+      <span>{{
+        selected.size
+          ? selected.size + ' selected'
+          : filtered.length + ' questions shown'
+      }}</span>
+      <button
+        type="button"
+        (click)="selectAllVisible()"
+        [disabled]="selected.size === filtered.length"
+      >
+        Select all
+      </button>
+      <button
+        type="button"
+        (click)="clearSelection()"
+        [disabled]="!selected.size"
+      >
+        Clear selection
+      </button>
+    </section>
     <section class="bulk" *ngIf="selected.size">
       <b>{{ selected.size }} selected</b>
       <button [disabled]="bulkBusy" (click)="publishSelected()">Publish</button>
@@ -152,6 +173,30 @@ import { CATEGORIES, StudioQuestion, TYPES } from './admin.models';
         border-radius: 12px;
         background: white;
       }
+      .selection-tools {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin: -0.7rem 0 1rem;
+      }
+      .selection-tools span {
+        margin-right: auto;
+        color: #60736c;
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+      .selection-tools button {
+        padding: 0.5rem 0.7rem;
+        border: 1px solid #b7c6c0;
+        border-radius: 7px;
+        background: #fff;
+        color: #245a4d;
+        font-weight: 800;
+      }
+      .selection-tools button:disabled {
+        opacity: 0.45;
+      }
       .bulk {
         display: flex;
         align-items: center;
@@ -264,6 +309,17 @@ import { CATEGORIES, StudioQuestion, TYPES } from './admin.models';
         .bulk {
           flex-wrap: wrap;
           margin: 0 0 0.8rem;
+        }
+        .selection-tools {
+          margin: -0.5rem 0 0.8rem;
+          flex-wrap: wrap;
+        }
+        .selection-tools span {
+          flex: 1 0 100%;
+        }
+        .selection-tools button {
+          flex: 1;
+          min-height: 44px;
         }
         .table {
           border: 0;
@@ -386,6 +442,13 @@ export class AdminQuestionsPage implements OnInit {
     this.selected = checked
       ? new Set(this.filtered.map((q) => q.id))
       : new Set();
+  }
+  selectAllVisible() {
+    this.selected = new Set(this.filtered.map((q) => q.id));
+  }
+  clearSelection() {
+    this.selected.clear();
+    this.selected = new Set(this.selected);
   }
   async bulk(changes: Partial<StudioQuestion>) {
     if (this.bulkBusy) return;
