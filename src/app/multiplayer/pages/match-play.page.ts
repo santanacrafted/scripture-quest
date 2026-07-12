@@ -28,21 +28,25 @@ import { QuickMatchService } from '../quick-match.service';
           *ngFor="let a of question.choices; let i = index"
           [disabled]="submitting || answered"
           [class.chosen]="selected === a"
-          [class.correct]="answered && a === question.correctAnswer"
+          [class.correct]="answered && !timedOut && a === question.correctAnswer"
           [class.wrong]="answered && selected === a && a !== question.correctAnswer"
           (click)="answer(a)"
         >
-          <i>{{ letters[i] }}</i
+          <i *ngIf="!isTrueFalse">{{ letters[i] }}</i
           >{{ a }}
         </button>
       </div>
-      <article *ngIf="answered && !submitting">
-        <strong>{{ correct ? 'A LIGHT SPARK!' : 'KEEP SEEKING' }}</strong>
+      <article *ngIf="answered">
+        <strong>{{ timedOut ? 'TURN LOST' : (correct ? 'A LIGHT SPARK!' : 'KEEP SEEKING') }}</strong>
+        <p *ngIf="timedOut">Time expired before an answer was chosen.</p>
         <p>{{ question.explanation }}</p>
         <small>{{ question.reference }}</small
         ><button class="continue" (click)="done()">Return to board</button>
       </article>
     </section>
+    <div *ngIf="showTimeoutAlert" class="timeout-alert" role="alert">
+      <div><b>⏳</b><strong>Time’s up!</strong><span>You lost your turn</span></div>
+    </div>
   </main>`,
   styles: [
     `
@@ -161,6 +165,13 @@ import { QuickMatchService } from '../quick-match.service';
         font-weight: 900;
         touch-action: manipulation;
       }
+      .timeout-alert { position:fixed; inset:0; z-index:30; display:grid; place-items:center; padding:1rem; background:#260706d9; animation:timeout-flash .32s ease-out 3 alternate; }
+      .timeout-alert div { display:flex; width:min(88vw,24rem); min-height:15rem; flex-direction:column; align-items:center; justify-content:center; border:3px solid #ff8b78; border-radius:50%; background:radial-gradient(circle,#a91f19,#4c0907 72%); box-shadow:0 0 70px #ff3028aa; animation:timeout-pulse .55s ease-out; text-align:center; text-transform:uppercase; }
+      .timeout-alert b { font-size:3.5rem; }
+      .timeout-alert strong { font:900 clamp(2rem,10vw,3.5rem) Georgia; }
+      .timeout-alert span { margin-top:.5rem; color:#ffd1c9; font-weight:900; letter-spacing:.1em; }
+      @keyframes timeout-flash { from { background:#160302c9; } to { background:#770d09e8; } }
+      @keyframes timeout-pulse { from { transform:scale(.7); opacity:0; } 70% { transform:scale(1.06); } to { transform:scale(1); opacity:1; } }
       @media (max-width: 360px) {
         .answers {
           grid-template-columns: 1fr;
@@ -199,7 +210,10 @@ export class MatchPlayPage implements OnInit, OnDestroy {
   answered = false;
   correct = false;
   waitingForOpponent = false;
+  timedOut = false;
+  showTimeoutAlert = false;
   private cachedCorrectAnswer = '';
+  private turnSave?: Promise<void>;
   time = 20;
   letters = ['A', 'B', 'C', 'D'];
   timer: any;
@@ -227,7 +241,7 @@ export class MatchPlayPage implements OnInit, OnDestroy {
     this.timer = setInterval(() => {
       if (--this.time <= 0) {
         clearInterval(this.timer);
-        this.answer('__timeout__');
+        this.handleTimeout();
       }
     }, 1000);
   }
@@ -252,8 +266,13 @@ export class MatchPlayPage implements OnInit, OnDestroy {
   get typeLabel() {
     return this.question?.questionType.replaceAll('_', ' ');
   }
+  get isTrueFalse() {
+    return this.question?.questionType === 'true_false';
+  }
   async answer(a: string) {
     if (this.submitting || this.answered || !this.match || !this.question) return;
+    const match = this.match;
+    const question = this.question;
     clearInterval(this.timer);
     this.selected = a;
     this.submitting = true;
@@ -262,29 +281,42 @@ export class MatchPlayPage implements OnInit, OnDestroy {
       this.correct = a.trim().toLowerCase() === this.cachedCorrectAnswer.trim().toLowerCase();
       this.answered = true;
     }
+    this.turnSave = (async () => {
     try {
-      const result = await this.service.submitAnswer(this.match.id, a);
+      const result = await this.service.submitAnswer(match.id, a);
       this.correct = result.correct;
       this.waitingForOpponent = result.waitingForOpponent;
-      this.question.correctAnswer = result.correctAnswer;
-      this.question.explanation = result.explanation;
-      this.question.reference = result.reference;
+      question.correctAnswer = result.correctAnswer;
+      question.explanation = result.explanation;
+      question.reference = result.reference;
       this.answered = true;
-      sessionStorage.removeItem(`quick-match-answer:${this.match.id}:${this.question.id}`);
+      sessionStorage.removeItem(`quick-match-answer:${match.id}:${question.id}`);
     } catch {
       this.selected = '';
-      void this.router.navigate(['/multiplayer/board', this.match.id]);
+      void this.router.navigate(['/multiplayer/board', match.id]);
     } finally {
       this.submitting = false;
     }
+    })();
+    await this.turnSave;
   }
-  done() {
+  handleTimeout() {
+    if (this.submitting || this.answered) return;
+    this.timedOut = true;
+    this.showTimeoutAlert = true;
+    void this.answer('__timeout__');
+    setTimeout(() => this.showTimeoutAlert = false, 1400);
+  }
+  async done() {
     if (!this.match) return;
+    // Feedback is instant, but do not reopen the board until its Firestore
+    // phase has advanced beyond the question that was just answered.
+    await this.turnSave;
     if (this.waitingForOpponent) {
-      this.router.navigate(['/multiplayer-battle']);
+      await this.router.navigate(['/multiplayer-battle']);
       return;
     }
-    this.router.navigate([
+    await this.router.navigate([
       '/multiplayer/board',
       this.match.id,
     ]);

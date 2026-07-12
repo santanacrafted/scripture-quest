@@ -92,6 +92,11 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    match /notifications/{notificationId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

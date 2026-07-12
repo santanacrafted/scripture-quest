@@ -17,6 +17,7 @@ import { QuizModePage } from './pages/quiz-mode.page';
 import { SettingsPage } from './settings/settings.page';
 import { MatchesPage } from './friend-battle/matches.page';
 import { ProfilePage } from './auth/profile.page';
+import { BattleHistoryPage } from './multiplayer/pages/battle-history.page';
 
 export const routes: Routes = [
   { path: 'admin', loadChildren: () => import('./admin/admin.routes') },
@@ -65,7 +66,7 @@ export const routes: Routes = [
   },
   {
     path: 'battle-history',
-    component: FeaturePage,
+    component: BattleHistoryPage,
     canActivate: [AuthGuard],
     data: {
       title: 'Battle History',

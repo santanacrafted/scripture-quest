@@ -38,6 +38,9 @@ export interface FirestoreQuickMatch {
   selectedCategory: import('./multiplayer.models').MatchCategory | null;
   currentQuestion: { id: string; text: string; choices: string[]; questionType: string; difficulty: string; kind?: 'standard' | 'light_challenge' } | null;
   lastTurnSummary: string;
+  completionReason?: 'forfeit' | 'lights';
+  forfeitedBy?: string;
+  winnerId?: string | null;
   roundNumber: number;
   totalRounds: number;
   playerIds: string[];

@@ -52,13 +52,13 @@ import { QuickMatchService } from '../quick-match.service';
         </button>
         <div class="hub">✦</div>
       </div>
-      <div class="result" *ngIf="match.selectedCategory">
+      <div class="result" *ngIf="match.selectedCategory && !spinning">
         <span>{{ icon(match.selectedCategory) }}</span
         ><b>{{ label(match.selectedCategory) }}</b>
       </div>
-      <h2>{{ statusTitle }}</h2>
-      <p>{{ match.lastTurnSummary }}</p>
-      <button class="action" [disabled]="!isMyTurn || spinning" (click)="act()">
+      <h2 *ngIf="!spinning">{{ statusTitle }}</h2>
+      <p *ngIf="!spinning">{{ match.lastTurnSummary }}</p>
+      <button *ngIf="!spinning" class="action" [disabled]="!isMyTurn" (click)="act()">
         {{ actionLabel }}
       </button>
     </section>
@@ -380,7 +380,6 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     return this.match?.currentTurnPlayerId === this.myId;
   }
   get actionLabel() {
-    if (this.spinning) return 'Preparing question…';
     if (!this.isMyTurn) return 'Waiting for opponent';
     if (this.match?.phase === 'light_challenge') return 'Take Light Challenge';
     return this.match?.phase === 'spin' ? 'Spin the wheel' : 'Answer challenge';
@@ -394,24 +393,29 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     if (!this.match || !this.isMyTurn || this.spinning) return;
     if (this.match.phase === 'spin' || this.match.phase === 'light_challenge') {
       this.spinning = true;
-      this.transitionCategory = this.match.phase === 'light_challenge' && this.match.selectedCategory
+      const selectedCategory = this.match.phase === 'light_challenge' && this.match.selectedCategory
         ? this.match.selectedCategory
         : this.categories[Math.floor(Math.random() * this.categories.length)];
-      this.rouletteLanded = false;
-      let typeIndex = 0;
-      const rouletteTimer = setInterval(() => {
-        this.displayedQuestionType = this.questionTypes[typeIndex++ % this.questionTypes.length].label;
-      }, 120);
+      const matchId = this.match.id;
+      const questionRequest = this.service.spinWheel(matchId, selectedCategory);
+      let rouletteTimer: ReturnType<typeof setInterval> | undefined;
       try {
-        const matchId = this.match.id;
+        // Let the category wheel finish and visibly land before covering it.
+        await new Promise(resolve => setTimeout(resolve, 900));
+        this.transitionCategory = selectedCategory;
+        this.rouletteLanded = false;
+        let typeIndex = 0;
+        rouletteTimer = setInterval(() => {
+          this.displayedQuestionType = this.questionTypes[typeIndex++ % this.questionTypes.length].label;
+        }, 120);
         const [spinResult] = await Promise.all([
-          this.service.spinWheel(matchId, this.transitionCategory),
+          questionRequest,
           new Promise(resolve => setTimeout(resolve, 2000)),
         ]);
         clearInterval(rouletteTimer);
         this.displayedQuestionType = this.formatQuestionType(spinResult.question.questionType);
         this.rouletteLanded = true;
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         sessionStorage.setItem(`quick-match-answer:${matchId}:${spinResult.question.id}`, spinResult.correctAnswer);
         await this.router.navigate(['/multiplayer/play', matchId]);
       } finally {

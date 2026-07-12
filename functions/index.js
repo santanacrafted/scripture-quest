@@ -117,7 +117,8 @@ exports.forfeitMatch = functions.https.onCall(requireAuth(async (data, context) 
     }
     const winnerId = match.playerIds.find((id) => id !== playerId) ?? null;
     transaction.update(matchRef, {
-      status: 'cancelled',
+      status: 'completed',
+      completionReason: 'forfeit',
       forfeitedBy: playerId,
       winnerId,
       currentTurnPlayerId: null,
@@ -127,6 +128,33 @@ exports.forfeitMatch = functions.https.onCall(requireAuth(async (data, context) 
     return { status: 'cancelled', matchId };
   });
 }));
+
+exports.notifyForfeitWinner = functions.firestore
+  .document('matches/{matchId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const match = change.after.data();
+    if (before.status === 'completed' || match.status !== 'completed' || match.completionReason !== 'forfeit' || !match.winnerId) return null;
+    const winnerId = match.winnerId;
+    await db.collection('notifications').add({
+      userId: winnerId, type: 'match_forfeit', matchId: context.params.matchId,
+      title: 'Victory by forfeit', message: 'Your opponent forfeited the match. The victory is yours!',
+      read: false, createdAt: FieldValue.serverTimestamp(),
+    });
+    const winner = await db.collection(USER_COLLECTION).doc(winnerId).get();
+    const token = winner.get('notificationToken') || winner.get('fcmToken');
+    if (!token) return null;
+    try {
+      await admin.messaging().send({
+        token,
+        notification: { title: 'Victory by forfeit', body: 'Your opponent forfeited. You won the match!' },
+        data: { matchId: context.params.matchId, route: `/multiplayer/result/${context.params.matchId}` },
+      });
+    } catch (error) {
+      functions.logger.warn('forfeit_notification_failed', { matchId: context.params.matchId, winnerId, code: error?.code });
+    }
+    return null;
+  });
 
 exports.deleteMatchForTesting = functions.https.onCall(requireAuth(async (data, context) => {
   const matchId = requireString(data?.matchId, 'matchId');
@@ -820,7 +848,15 @@ function publicMatchQuestion(id, question, questionPool = []) {
   const answer = question.answerData || {};
   let choices = [];
   if (answer.type === 'multiple_choice') choices = (answer.options || []).map((option) => option.text);
-  else if (answer.type === 'true_false') choices = ['True', 'False'];
+  else if (answer.type === 'true_false') {
+    return {
+      id,
+      text: question.prompt,
+      choices: ['True', 'False'].sort(() => Math.random() - 0.5),
+      questionType: question.questionType,
+      difficulty: question.difficulty,
+    };
+  }
   else if (answer.type === 'text') choices = [answer.primaryAnswer, ...(answer.distractors || [])];
   const correct = correctAnswerForQuestion(question);
   const poolAnswers = questionPool

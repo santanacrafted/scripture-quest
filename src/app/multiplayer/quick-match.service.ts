@@ -160,6 +160,17 @@ export class QuickMatchService {
     });
   }
 
+  observeMatchHistory(): Observable<FirestoreQuickMatch[]> {
+    return new Observable(subscriber => {
+      const userId = this.requireUserId();
+      const matchesQuery = query(collection(firebaseDb, 'matches'), where('playerIds', 'array-contains', userId));
+      return onSnapshot(matchesQuery, snapshot => subscriber.next(snapshot.docs
+        .map(entry => ({ id: entry.id, ...entry.data() }) as FirestoreQuickMatch)
+        .filter(match => match.status === 'completed')
+        .sort((left, right) => right.updatedAt.toMillis() - left.updatedAt.toMillis())), error => subscriber.error(error));
+    });
+  }
+
   dispose(): void {
     this.unsubscribeQueue?.();
     this.unsubscribeQueue = undefined;

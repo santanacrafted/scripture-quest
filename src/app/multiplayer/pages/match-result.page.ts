@@ -2,8 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CategoryProgressComponent } from '../components/category-progress.component';
-import { Match } from '../multiplayer.models';
-import { MultiplayerService } from '../multiplayer.service';
+import { firebaseAuth } from '../../firebase';
+import { FirestoreQuickMatch } from '../quick-match.models';
+import { QuickMatchService } from '../quick-match.service';
 
 @Component({
   selector: 'app-match-result-page',
@@ -23,11 +24,10 @@ import { MultiplayerService } from '../multiplayer.service';
             Match complete
           </p>
           <h1 class="mt-2 text-3xl font-semibold">
-            {{ match?.winnerId ? 'Victory!' : 'Match summary' }}
+            {{ match?.winnerId === myId ? 'Victory!' : 'Match complete' }}
           </h1>
           <p class="mt-2 text-sm text-slate-600">
-            The result screen is ready for future achievements, seasons, and
-            richer celebration moments.
+            {{ match?.completionReason === 'forfeit' ? (match?.winnerId === myId ? 'Your opponent forfeited. Victory awarded.' : 'You forfeited this match.') : 'The battle has ended.' }}
           </p>
 
           <div *ngIf="match" class="mt-5 space-y-4">
@@ -75,22 +75,23 @@ import { MultiplayerService } from '../multiplayer.service';
   `,
 })
 export class MatchResultPage implements OnInit {
-  match: Match | undefined;
+  match: FirestoreQuickMatch | undefined;
+  myId = firebaseAuth.currentUser?.uid || '';
 
   constructor(
     private readonly route: ActivatedRoute,
     private readonly router: Router,
-    private readonly multiplayerService: MultiplayerService,
+    private readonly quickMatchService: QuickMatchService,
   ) {}
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
       this.router.navigate(['/multiplayer']);
       return;
     }
 
-    this.match = this.multiplayerService.getMatchById(id);
+    this.match = (await this.quickMatchService.observeMatch(id)) ?? undefined;
   }
 
   rematch(): void {
@@ -98,15 +99,11 @@ export class MatchResultPage implements OnInit {
       return;
     }
 
-    this.match = this.multiplayerService.requestRematch(
-      this.match.id,
-      'player-1',
-    );
+    void this.router.navigate(['/multiplayer/quick-match'], { state: { startNewMatch: true } });
   }
 
   getPlayerProgress(): Record<string, { current: number; target: number; completed: boolean }> {
     if (!this.match) return {};
-    const id = this.match.playerIds[0];
-    return Object.fromEntries(this.match.playerState[id].lights.map(light => [light, {current:1,target:1,completed:true}]));
+    return Object.fromEntries((this.match.players[this.myId]?.lights || []).map(light => [light, {current:1,target:1,completed:true}]));
   }
 }
