@@ -66,3 +66,10 @@ export interface MatchAnswerResult {
   explanation: string;
   reference: string;
 }
+
+export interface MatchSpinResult {
+  matchId: string;
+  category: string;
+  question: { id: string; questionType: string };
+  correctAnswer: string;
+}

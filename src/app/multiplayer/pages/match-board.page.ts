@@ -79,6 +79,25 @@ import { QuickMatchService } from '../quick-match.service';
         <b>♜</b><span>{{ sparks(myId) }}/3</span>
       </div>
     </section>
+    <section
+      *ngIf="transitionCategory"
+      class="question-transition"
+      [style.--category-color]="color(transitionCategory)"
+      aria-live="polite"
+    >
+      <div class="category-glow"></div>
+      <div class="category-emblem">{{ icon(transitionCategory) }}</div>
+      <p>{{ label(transitionCategory) }}</p>
+      <h2>Choosing your challenge</h2>
+      <div class="type-roulette" [class.landed]="rouletteLanded">
+        <div class="roulette-ring">
+          <span *ngFor="let type of questionTypes; let i = index" [style.--slot]="i">{{ type.icon }}</span>
+        </div>
+        <div class="roulette-pointer">▼</div>
+        <strong>{{ displayedQuestionType }}</strong>
+      </div>
+      <small>{{ rouletteLanded ? 'Challenge selected' : 'Searching the battle scrolls…' }}</small>
+    </section>
   </main>`,
   styles: [
     `
@@ -287,6 +306,32 @@ import { QuickMatchService } from '../quick-match.service';
         filter: grayscale(1);
         opacity: 0.55;
       }
+      .question-transition {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        padding: calc(env(safe-area-inset-top) + 1.5rem) 1.25rem calc(env(safe-area-inset-bottom) + 1.5rem);
+        background: radial-gradient(circle at center, color-mix(in srgb, var(--category-color) 78%, white 12%), color-mix(in srgb, var(--category-color) 48%, #06100e 52%) 48%, #06100e 100%);
+        text-align: center;
+      }
+      .category-glow { position:absolute; width:70vmin; aspect-ratio:1; border-radius:50%; background:var(--category-color); filter:blur(70px); opacity:.32; }
+      .category-emblem { position:relative; display:grid; width:6rem; aspect-ratio:1; place-items:center; border:3px solid #ffe59a; border-radius:50%; background:#09201dd9; box-shadow:0 0 35px var(--category-color),inset 0 0 20px #fff2; font-size:3rem; }
+      .question-transition>p { position:relative; margin:.8rem 0 .15rem; color:#ffe48c; font-weight:900; letter-spacing:.16em; text-transform:uppercase; }
+      .question-transition>h2 { position:relative; margin:0 0 1rem; font:900 clamp(1.55rem,7vw,2.5rem) Georgia; text-transform:uppercase; }
+      .type-roulette { position:relative; display:grid; width:min(76vw,19rem); aspect-ratio:1; place-items:center; }
+      .roulette-ring { position:absolute; inset:0; border:4px solid #f6d474; border-radius:50%; background:#071311dd; box-shadow:0 1rem 2.5rem #0008,inset 0 0 30px var(--category-color); animation:type-spin .72s linear infinite; }
+      .roulette-ring span { position:absolute; left:50%; top:50%; font-size:1.5rem; transform:rotate(calc(var(--slot) * 45deg)) translateY(-7.5rem) rotate(calc(var(--slot) * -45deg)); transform-origin:0 0; }
+      .roulette-pointer { position:absolute; z-index:2; top:-.35rem; color:#ffe078; font-size:1.7rem; filter:drop-shadow(0 2px 2px #000); }
+      .type-roulette strong { position:relative; z-index:2; display:grid; width:56%; min-height:4.5rem; place-items:center; padding:.6rem; border:2px solid #f6d474; border-radius:50%; background:#102b27; color:#fff5cf; font:900 .92rem Georgia; text-transform:uppercase; }
+      .type-roulette.landed .roulette-ring { animation:none; box-shadow:0 0 38px var(--category-color),inset 0 0 30px var(--category-color); }
+      .question-transition>small { position:relative; color:#d4e8e2; font-weight:800; }
+      @keyframes type-spin { to { transform:rotate(360deg); } }
+      @media(max-height:700px){.category-emblem{width:4.5rem;font-size:2.2rem}.type-roulette{width:min(54vh,16rem)}.roulette-ring span{transform:rotate(calc(var(--slot) * 45deg)) translateY(-6.2rem) rotate(calc(var(--slot) * -45deg));}}
     `,
   ],
 })
@@ -294,7 +339,16 @@ export class MatchBoardPage implements OnInit, OnDestroy {
   match?: FirestoreQuickMatch;
   myId = 'player-1';
   categories = MULTIPLAYER_CATEGORIES;
+  readonly questionTypes = [
+    { label: 'Who Am I', icon: '👤' }, { label: 'Multiple Choice', icon: '✦' },
+    { label: 'True or False', icon: '⚖️' }, { label: 'Verse Completion', icon: '📖' },
+    { label: 'Reference Match', icon: '🔎' }, { label: 'Sequence', icon: '🔢' },
+    { label: 'Emoji Challenge', icon: '✨' }, { label: 'What Happens Next', icon: '➡️' },
+  ];
   spinning = false;
+  transitionCategory: MatchCategory | null = null;
+  displayedQuestionType = 'Mystery challenge';
+  rouletteLanded = false;
   private subscription?: Subscription;
   constructor(
     private route: ActivatedRoute,
@@ -340,14 +394,29 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     if (!this.match || !this.isMyTurn || this.spinning) return;
     if (this.match.phase === 'spin' || this.match.phase === 'light_challenge') {
       this.spinning = true;
+      this.transitionCategory = this.match.phase === 'light_challenge' && this.match.selectedCategory
+        ? this.match.selectedCategory
+        : this.categories[Math.floor(Math.random() * this.categories.length)];
+      this.rouletteLanded = false;
+      let typeIndex = 0;
+      const rouletteTimer = setInterval(() => {
+        this.displayedQuestionType = this.questionTypes[typeIndex++ % this.questionTypes.length].label;
+      }, 120);
       try {
         const matchId = this.match.id;
-        await Promise.all([
-          this.service.spinWheel(matchId),
-          new Promise(resolve => setTimeout(resolve, 650)),
+        const [spinResult] = await Promise.all([
+          this.service.spinWheel(matchId, this.transitionCategory),
+          new Promise(resolve => setTimeout(resolve, 2000)),
         ]);
+        clearInterval(rouletteTimer);
+        this.displayedQuestionType = this.formatQuestionType(spinResult.question.questionType);
+        this.rouletteLanded = true;
+        await new Promise(resolve => setTimeout(resolve, 500));
+        sessionStorage.setItem(`quick-match-answer:${matchId}:${spinResult.question.id}`, spinResult.correctAnswer);
         await this.router.navigate(['/multiplayer/play', matchId]);
       } finally {
+        clearInterval(rouletteTimer);
+        this.transitionCategory = null;
         this.spinning = false;
       }
     } else this.router.navigate(['/multiplayer/play', this.match.id]);
@@ -369,6 +438,9 @@ export class MatchBoardPage implements OnInit, OnDestroy {
   }
   color(c: MatchCategory) {
     return CATEGORY_COLORS[c];
+  }
+  formatQuestionType(type: string) {
+    return type.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
   }
   turnLabel(id: string) {
     return this.match?.currentTurnPlayerId === id

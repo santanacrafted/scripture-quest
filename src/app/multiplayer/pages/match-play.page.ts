@@ -36,7 +36,7 @@ import { QuickMatchService } from '../quick-match.service';
           >{{ a }}
         </button>
       </div>
-      <article *ngIf="answered">
+      <article *ngIf="answered && !submitting">
         <strong>{{ correct ? 'A LIGHT SPARK!' : 'KEEP SEEKING' }}</strong>
         <p>{{ question.explanation }}</p>
         <small>{{ question.reference }}</small
@@ -199,6 +199,7 @@ export class MatchPlayPage implements OnInit, OnDestroy {
   answered = false;
   correct = false;
   waitingForOpponent = false;
+  private cachedCorrectAnswer = '';
   time = 20;
   letters = ['A', 'B', 'C', 'D'];
   timer: any;
@@ -222,6 +223,7 @@ export class MatchPlayPage implements OnInit, OnDestroy {
       reference: '',
       explanation: '',
     } as Question;
+    this.cachedCorrectAnswer = sessionStorage.getItem(`quick-match-answer:${this.match.id}:${this.question.id}`) || '';
     this.timer = setInterval(() => {
       if (--this.time <= 0) {
         clearInterval(this.timer);
@@ -255,6 +257,11 @@ export class MatchPlayPage implements OnInit, OnDestroy {
     clearInterval(this.timer);
     this.selected = a;
     this.submitting = true;
+    if (this.cachedCorrectAnswer) {
+      this.question.correctAnswer = this.cachedCorrectAnswer;
+      this.correct = a.trim().toLowerCase() === this.cachedCorrectAnswer.trim().toLowerCase();
+      this.answered = true;
+    }
     try {
       const result = await this.service.submitAnswer(this.match.id, a);
       this.correct = result.correct;
@@ -263,6 +270,7 @@ export class MatchPlayPage implements OnInit, OnDestroy {
       this.question.explanation = result.explanation;
       this.question.reference = result.reference;
       this.answered = true;
+      sessionStorage.removeItem(`quick-match-answer:${this.match.id}:${this.question.id}`);
     } catch {
       this.selected = '';
       void this.router.navigate(['/multiplayer/board', this.match.id]);

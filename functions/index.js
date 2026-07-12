@@ -270,7 +270,12 @@ exports.spinMatchWheel = functions.https.onCall(requireAuth(async (data, context
   const matchId = requireString(data?.matchId, 'matchId');
   const matchRef = db.collection(MATCH_COLLECTION).doc(matchId);
   const categories = ['characters', 'scripture', 'stories', 'places', 'bible_knowledge'];
-  let category = categories[Math.floor(Math.random() * categories.length)];
+  const requestedCategory = typeof data?.category === 'string'
+    ? (data.category === 'knowledge' ? 'bible_knowledge' : data.category)
+    : null;
+  let category = categories.includes(requestedCategory)
+    ? requestedCategory
+    : categories[Math.floor(Math.random() * categories.length)];
   const matchBeforeSpin = await matchRef.get();
   if (!matchBeforeSpin.exists) throw new functions.https.HttpsError('not-found', 'Match not found.');
   const requestedPhase = matchBeforeSpin.get('phase');
@@ -297,7 +302,7 @@ exports.spinMatchWheel = functions.https.onCall(requireAuth(async (data, context
       currentQuestion: { ...publicQuestion, kind: match.phase === 'light_challenge' ? 'light_challenge' : 'standard' },
       lastTurnSummary: match.phase === 'light_challenge' ? 'Answer correctly to capture the Light!' : `The wheel landed on ${category}.`, updatedAt: FieldValue.serverTimestamp(),
     });
-    return { matchId, category, question: publicQuestion };
+    return { matchId, category, question: publicQuestion, correctAnswer: correctAnswerForQuestion(question) };
   });
 }));
 

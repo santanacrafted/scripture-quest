@@ -120,8 +120,8 @@ export class QuickMatchService {
     ));
   }
 
-  async spinWheel(matchId: string): Promise<void> {
-    await this.callFunction('spinMatchWheel', { matchId });
+  async spinWheel(matchId: string, category: string): Promise<import('./quick-match.models').MatchSpinResult> {
+    return this.callFunction('spinMatchWheel', { matchId, category }) as unknown as Promise<import('./quick-match.models').MatchSpinResult>;
   }
 
   async submitAnswer(matchId: string, answer: string): Promise<import('./quick-match.models').MatchAnswerResult> {
