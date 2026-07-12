@@ -1,6 +1,11 @@
 import { initializeApp } from 'firebase/app';
 import { getAnalytics } from 'firebase/analytics';
-import { browserLocalPersistence, getAuth, indexedDBLocalPersistence, initializeAuth } from 'firebase/auth';
+import {
+  browserLocalPersistence,
+  getAuth,
+  indexedDBLocalPersistence,
+  initializeAuth,
+} from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 
@@ -26,7 +31,10 @@ function initializeFirebaseAuth() {
       persistence: [indexedDBLocalPersistence, browserLocalPersistence],
     });
   } catch (error) {
-    console.warn('Firebase Auth was already initialized, reusing existing instance.', error);
+    console.warn(
+      'Firebase Auth was already initialized, reusing existing instance.',
+      error
+    );
     return getAuth(firebaseApp);
   }
 }

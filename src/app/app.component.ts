@@ -20,21 +20,26 @@ export class AppComponent {
 
   constructor(
     backgroundMusic: BackgroundMusicService,
-    private readonly router: Router,
+    private readonly router: Router
   ) {
     backgroundMusic.start();
   }
 
   get showBottomNav(): boolean {
     const url = this.router.url;
-    return url !== '/' && ![
-      '/login',
-      '/register',
-      '/bible-ready',
-      '/multiplayer/quick-match',
-      '/multiplayer/lobby',
-      '/multiplayer/play',
-      '/multiplayer/result',
-    ].some((route) => url.startsWith(route));
+    return (
+      url !== '/' &&
+      !url.startsWith('/admin') &&
+      ![
+        '/login',
+        '/register',
+        '/bible-ready',
+        '/multiplayer/quick-match',
+        '/multiplayer/lobby',
+        '/multiplayer/board',
+        '/multiplayer/play',
+        '/multiplayer/result',
+      ].some((route) => url.startsWith(route))
+    );
   }
 }

@@ -21,6 +21,29 @@ const RECENT_PLAYER_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_PENDING_ASYNC_MATCHES = 10;
 const CANDIDATE_LIMIT = 30;
 const EXPIRE_BATCH_LIMIT = 100;
+// Bootstrap allowlist only. Access to admin data is always enforced with the
+// signed Firebase ID token's `admin` custom claim.
+const CONTENT_ADMIN_EMAILS = new Set([
+  'santanacrafted@gmail.com',
+  'dsantanam2@gmail.com',
+]);
+
+exports.bootstrapContentAdmin = functions.https.onCall(requireAuth(async (_data, context) => {
+  const user = await admin.auth().getUser(context.auth.uid);
+  const email = String(user.email || '').trim().toLowerCase();
+  if (!CONTENT_ADMIN_EMAILS.has(email)) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'This account is not approved for the Content Studio.',
+    );
+  }
+  await admin.auth().setCustomUserClaims(user.uid, {
+    ...(user.customClaims || {}),
+    admin: true,
+  });
+  functions.logger.info('content_admin_claim_granted', { uid: user.uid, email });
+  return { admin: true, refreshToken: true };
+}));
 
 const MATCH_STAGES = [
   { afterMs: 0, ratingRange: 100, preferSameLanguage: true },
@@ -221,6 +244,71 @@ function requireAuth(handler) {
     return handler(data, context);
   };
 }
+
+function requireAdmin(handler) {
+  return requireAuth(async (data, context) => {
+    if (context.auth.token.admin !== true) {
+      throw new functions.https.HttpsError('permission-denied', 'Content Studio administrator access is required.');
+    }
+    return handler(data, context);
+  });
+}
+
+const CONTENT_CATEGORIES = ['characters','scripture','stories','places','bible_knowledge'];
+const CONTENT_TYPES = ['multiple_choice','pictionary','verse_completion','reference_match','who_am_i','who_said_it','sequence','map_challenge','emoji_challenge','true_false','image_reveal','zoom_challenge','match_pairs','odd_one_out','what_happens_next','arrange_verse'];
+const CONTENT_DIFFICULTIES = ['easy','medium','hard','expert'];
+function validateContentQuestion(question, publishing = false) {
+  const errors = [];
+  if (!CONTENT_CATEGORIES.includes(question?.category)) errors.push('Invalid category.');
+  if (!CONTENT_TYPES.includes(question?.questionType)) errors.push('Invalid question type.');
+  if (!CONTENT_DIFFICULTIES.includes(question?.difficulty)) errors.push('Invalid difficulty.');
+  if (!['en','es'].includes(question?.language)) errors.push('Invalid language.');
+  if (typeof question?.prompt !== 'string' || question.prompt.trim().length < 10 || question.prompt.length > 500) errors.push('Prompt must contain 10–500 characters.');
+  if (!question?.answerData?.type) errors.push('Answer configuration is required.');
+  if (question?.questionType === 'multiple_choice') {
+    const options = question.answerData?.options || [];
+    if (options.length !== 4) errors.push('Multiple choice requires four options.');
+    if (new Set(options.map(option => String(option.text).trim().toLowerCase())).size !== options.length) errors.push('Multiple-choice options must be unique.');
+    if (!(question.answerData?.correctOptionIds || []).every(id => options.some(option => option.id === id))) errors.push('Correct option is invalid.');
+  }
+  if (publishing && !String(question?.scriptureReference || '').trim()) errors.push('Scripture reference is required to publish.');
+  if (publishing && ['pictionary','image_reveal','zoom_challenge','map_challenge'].includes(question?.questionType) && !question?.media?.storagePath) errors.push('This question type requires media.');
+  if (publishing && question?.media?.storagePath && !String(question.media.altText || '').trim()) errors.push('Media alt text is required.');
+  return errors;
+}
+
+exports.saveContentQuestion = functions.https.onCall(requireAdmin(async (data, context) => {
+  const question = data?.question || {};
+  const id = typeof data?.questionId === 'string' && data.questionId ? data.questionId : db.collection('questions').doc().id;
+  const errors = validateContentQuestion(question, false);
+  if (errors.length) throw new functions.https.HttpsError('invalid-argument', errors.join(' '), { errors });
+  const ref = db.collection('questions').doc(id), existing = await ref.get(), now = FieldValue.serverTimestamp();
+  await ref.set({...question,id,status:question.status || 'draft',isActive:question.status === 'published' && question.isActive === true,createdAt:existing.exists?existing.get('createdAt'):now,createdBy:existing.exists?existing.get('createdBy'):context.auth.uid,updatedAt:now,updatedBy:context.auth.uid},{merge:true});
+  await db.collection('questionAuditLogs').add({questionId:id,action:existing.exists?'updated':'created',actorId:context.auth.uid,timestamp:now});
+  return { questionId:id };
+}));
+
+exports.publishQuestion = functions.https.onCall(requireAdmin(async (data, context) => {
+  const id = requireString(data?.questionId, 'questionId'), ref = db.collection('questions').doc(id), snapshot = await ref.get();
+  if (!snapshot.exists) throw new functions.https.HttpsError('not-found','Question not found.');
+  const question = {...snapshot.data(),...(data?.question || {})}, errors = validateContentQuestion(question, true);
+  if (errors.length) throw new functions.https.HttpsError('failed-precondition', errors.join(' '), { errors });
+  if (question.externalId) { const duplicate = await db.collection('questions').where('externalId','==',question.externalId).limit(2).get(); if (duplicate.docs.some(doc => doc.id !== id)) throw new functions.https.HttpsError('already-exists','External ID is already in use.'); }
+  await ref.set({...question,status:'published',isActive:true,publishedAt:FieldValue.serverTimestamp(),publishedBy:context.auth.uid,updatedAt:FieldValue.serverTimestamp(),updatedBy:context.auth.uid},{merge:true});
+  await db.collection('questionAuditLogs').add({questionId:id,action:'published',actorId:context.auth.uid,timestamp:FieldValue.serverTimestamp()});
+  return { questionId:id,status:'published' };
+}));
+
+exports.bulkImportQuestions = functions.https.onCall(requireAdmin(async (data, context) => {
+  const questions = data?.questions;
+  if (!Array.isArray(questions) || !questions.length || questions.length > 1000) throw new functions.https.HttpsError('invalid-argument','Import must contain 1–1000 questions.');
+  const failures = questions.map((question,index)=>({index,errors:validateContentQuestion(question,false)})).filter(result=>result.errors.length);
+  if (failures.length) throw new functions.https.HttpsError('invalid-argument','Import contains invalid questions.',{failures});
+  const externalIds = questions.map(q=>q.externalId).filter(Boolean); if (new Set(externalIds).size !== externalIds.length) throw new functions.https.HttpsError('already-exists','Import contains duplicate external IDs.');
+  let imported=0;
+  for(let offset=0;offset<questions.length;offset+=400){const batch=db.batch();questions.slice(offset,offset+400).forEach(question=>{const ref=db.collection('questions').doc();batch.set(ref,{...question,id:ref.id,status:'draft',isActive:false,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp(),createdBy:context.auth.uid,updatedBy:context.auth.uid});});await batch.commit();imported+=Math.min(400,questions.length-offset);}
+  functions.logger.info('content_questions_imported',{actorId:context.auth.uid,count:imported});return{imported};
+}));
 
 async function joinOrAttemptQuickMatch(playerId) {
   const profile = await loadAuthoritativeProfile(playerId);

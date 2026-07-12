@@ -19,6 +19,7 @@ import { MatchesPage } from './friend-battle/matches.page';
 import { ProfilePage } from './auth/profile.page';
 
 export const routes: Routes = [
+  { path: 'admin', loadChildren: () => import('./admin/admin.routes') },
   { path: '', component: LaunchPage, pathMatch: 'full' },
   { path: 'login', component: LoginPage, data: { mode: 'login' } },
   { path: 'register', component: LoginPage, data: { mode: 'register' } },
