@@ -90,6 +90,33 @@ export class ImportService {
     if (!passages?.length) issues.push({ severity: 'error', message: 'Structured passages are required.' });
     const testament = (raw['testament'] || source?.testament || undefined) as 'old' | 'new' | undefined;
     const answer = source.answerData?.type ? source.answerData as QuestionAnswerData : this.answer(raw, type, issues);
+    const media = source.media?.downloadUrl || source.media?.storagePath
+      ? source.media
+      : raw['media_download_url'] || raw['media_storage_path']
+      ? {
+          downloadUrl: raw['media_download_url'],
+          storagePath: raw['media_storage_path'],
+          mimeType: raw['media_mime_type'] || 'image/jpeg',
+          altText: raw['media_alt_text'],
+        }
+      : undefined;
+    if (type === 'pictionary' && answer.type !== 'multiple_choice')
+      issues.push({ severity: 'error', message: 'Pictionary requires multiple-choice answerData.' });
+    if (
+      ['multiple_choice', 'pictionary'].includes(type) &&
+      answer.type === 'multiple_choice'
+    ) {
+      if (answer.options.length !== 4)
+        issues.push({ severity: 'error', message: 'Four answer options are required.' });
+      if (answer.correctOptionIds.length !== 1)
+        issues.push({ severity: 'error', message: 'Exactly one correct option is required.' });
+      if (!answer.correctOptionIds.every((id) => answer.options.some((option) => option.id === id)))
+        issues.push({ severity: 'error', message: 'The correct option ID must match an answer option.' });
+    }
+    if (type === 'pictionary' && (!media?.downloadUrl || !media?.storagePath))
+      issues.push({ severity: 'error', message: 'Pictionary requires media with storagePath and downloadUrl.' });
+    if (type === 'pictionary' && !media?.altText)
+      issues.push({ severity: 'error', message: 'Pictionary image alt text is required.' });
     const question: Partial<StudioQuestion> = {
       externalId: source.externalId || raw['external_id'] || undefined,
       translationGroupId: source.translationGroupId || raw['translation_group_id'] || undefined,
@@ -107,6 +134,7 @@ export class ImportService {
       topics: Array.isArray(source.topics) ? source.topics : this.list(raw['topics']),
       tags: Array.isArray(source.tags) ? source.tags : this.list(raw['tags']),
       answerData: answer,
+      media,
       status: 'draft',
       isActive: false,
     };
@@ -133,7 +161,7 @@ export class ImportService {
         });
       }
     }
-    if (type === 'multiple_choice') {
+    if (type === 'multiple_choice' || type === 'pictionary') {
       const values = ['option_a', 'option_b', 'option_c', 'option_d'].map(
         (k) => r[k] || ''
       );

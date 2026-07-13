@@ -16,8 +16,6 @@ export type ContentQuestionType =
   | 'map_challenge'
   | 'emoji_challenge'
   | 'true_false'
-  | 'image_reveal'
-  | 'zoom_challenge'
   | 'match_pairs'
   | 'odd_one_out'
   | 'what_happens_next'
@@ -87,8 +85,6 @@ export interface StudioQuestion {
     altText: string;
     width?: number;
     height?: number;
-    zoomRegion?: { x: number; y: number; width: number; height: number };
-    revealGrid?: { rows: number; columns: number };
   };
   testament?: 'old' | 'new';
   topics: string[];
@@ -168,8 +164,6 @@ export const TYPES: [ContentQuestionType, string][] = [
   ['map_challenge', 'Map Challenge'],
   ['emoji_challenge', 'Emoji Challenge'],
   ['true_false', 'True / False'],
-  ['image_reveal', 'Image Reveal'],
-  ['zoom_challenge', 'Zoom Challenge'],
   ['match_pairs', 'Match Pairs'],
   ['odd_one_out', 'Odd One Out'],
   ['what_happens_next', 'What Happens Next?'],

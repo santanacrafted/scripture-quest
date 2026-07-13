@@ -24,6 +24,12 @@ import { CATEGORIES, StudioQuestion, TYPES } from './admin.models';
       ><select [(ngModel)]="category">
         <option value="">All categories</option>
         <option *ngFor="let c of categories" [value]="c[0]">{{ c[1] }}</option>
+      </select
+      ><select [(ngModel)]="questionType">
+        <option value="">All question types</option>
+        <option *ngFor="let type of types" [value]="type[0]">
+          {{ type[1] }}
+        </option>
       </select>
     </section>
     <section class="selection-tools" *ngIf="filtered.length">
@@ -156,7 +162,7 @@ import { CATEGORIES, StudioQuestion, TYPES } from './admin.models';
       }
       .filters {
         display: grid;
-        grid-template-columns: 2fr 1fr 1fr;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
         gap: 0.7rem;
         margin: 1.5rem 0;
       }
@@ -407,6 +413,7 @@ export class AdminQuestionsPage implements OnInit {
   search = '';
   status = '';
   category = '';
+  questionType = '';
   statuses = ['draft', 'review', 'published', 'rejected', 'archived'];
   categories = CATEGORIES;
   types = TYPES;
@@ -425,7 +432,8 @@ export class AdminQuestionsPage implements OnInit {
         (!s ||
           `${q.prompt} ${q.scriptureReference}`.toLowerCase().includes(s)) &&
         (!this.status || q.status === this.status) &&
-        (!this.category || q.category === this.category)
+        (!this.category || q.category === this.category) &&
+        (!this.questionType || q.questionType === this.questionType)
     );
   }
   categoryName(v: string) {

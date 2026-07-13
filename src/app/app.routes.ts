@@ -4,11 +4,9 @@ import { LoginPage } from './auth/login.page';
 import { FriendsPage } from './auth/friends.page';
 import { MultiplayerBattlePage } from './multiplayer/pages/multiplayer-battle.page';
 import { MatchLobbyPage } from './multiplayer/pages/match-lobby.page';
-import { MatchPlayPage } from './multiplayer/pages/match-play.page';
 import { MatchResultPage } from './multiplayer/pages/match-result.page';
 import { MultiplayerHomePage } from './multiplayer/pages/multiplayer-home.page';
 import { QuickMatchSearchPage } from './multiplayer/pages/quick-match-search.page';
-import { MatchBoardPage } from './multiplayer/pages/match-board.page';
 import { BibleReadyPage } from './pages/bible-ready.page';
 import { DailyQuestPage } from './pages/daily-quest.page';
 import { FeaturePage } from './pages/feature.page';
@@ -25,7 +23,7 @@ export const routes: Routes = [
   { path: 'register', component: LoginPage, data: { mode: 'register' } },
   {
     path: 'multiplayer/board/:id',
-    component: MatchBoardPage,
+    loadComponent: () => import('./multiplayer/pages/match-board.page').then(module => module.MatchBoardPage),
     canActivate: [AuthGuard],
   },
   {
@@ -43,7 +41,10 @@ export const routes: Routes = [
   },
   {
     path: 'multiplayer/play/:id',
-    component: MatchPlayPage,
+    loadComponent: () =>
+      import('./multiplayer/pages/match-play.page').then(
+        (module) => module.MatchPlayPage
+      ),
     canActivate: [AuthGuard],
   },
   {

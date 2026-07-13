@@ -6,7 +6,6 @@ import {
   deleteDoc,
   getDoc,
   getDocs,
-  limit,
   orderBy,
   query,
   serverTimestamp,
@@ -28,10 +27,9 @@ export class QuestionRepository {
       ? query(
           this.col,
           where('status', '==', status),
-          orderBy('updatedAt', 'desc'),
-          limit(100)
+          orderBy('updatedAt', 'desc')
         )
-      : query(this.col, orderBy('updatedAt', 'desc'), limit(100));
+      : query(this.col, orderBy('updatedAt', 'desc'));
     return (await getDocs(q)).docs.map(
       (d) => ({ id: d.id, ...d.data() } as StudioQuestion)
     );
@@ -135,15 +133,22 @@ export class QuestionRepository {
     }
     return { published, failures };
   }
-  async importDrafts(rows: Partial<StudioQuestion>[]) {
-    const result = await httpsCallable<
-      { questions: Partial<StudioQuestion>[] },
+  async importQuestions(rows: Partial<StudioQuestion>[], publish = false) {
+    const callable = httpsCallable<
+      { questions: Partial<StudioQuestion>[]; publish: boolean },
       { imported: number }
     >(
       firebaseFunctions,
       'bulkImportQuestions'
-    )({ questions: rows });
-    return result.data.imported;
+    );
+    let imported = 0;
+    // Keep each callable request comfortably below payload and Firestore batch
+    // limits while allowing the source dataset itself to be any size.
+    for (let offset = 0; offset < rows.length; offset += 400) {
+      const result = await callable({ questions: rows.slice(offset, offset + 400), publish });
+      imported += result.data.imported;
+    }
+    return imported;
   }
   async duplicateTranslation(question: StudioQuestion) {
     const group = question.translationGroupId || `translation_${question.id}`;

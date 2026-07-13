@@ -36,7 +36,7 @@ export interface FirestoreQuickMatch {
   currentTurnPlayerId: string | null;
   phase: 'spin' | 'light_challenge' | 'question' | 'complete';
   selectedCategory: import('./multiplayer.models').MatchCategory | null;
-  currentQuestion: { id: string; text: string; choices: string[]; questionType: string; difficulty: string; kind?: 'standard' | 'light_challenge' } | null;
+  currentQuestion: { id: string; text: string; choices: string[]; questionType: string; difficulty: string; kind?: 'standard' | 'light_challenge'; media?: { downloadUrl: string; altText: string }; matchPairs?: { left: string[]; right: string[] }; verseSegments?: { id: string; text: string }[] } | null;
   lastTurnSummary: string;
   completionReason?: 'forfeit' | 'lights';
   forfeitedBy?: string;

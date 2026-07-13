@@ -39,9 +39,8 @@ import { QuestionRepository } from './question.repository';
       <div class="summary">
         <b>{{ validCount }} ready</b
         ><span>{{ errorCount }} errors · {{ warningCount }} warnings</span
-        ><button [disabled]="!validCount || busy" (click)="import()">
-          {{ busy ? 'Importing…' : 'Import valid rows as drafts' }}
-        </button>
+        ><button [disabled]="!validCount || busy" (click)="import(false)">Import as drafts</button>
+        <button [disabled]="!validCount || busy" (click)="import(true)">{{ busy ? 'Importing…' : 'Import and publish' }}</button>
       </div>
       <div class="rows">
         <article *ngFor="let row of rows" [class.bad]="hasErrors(row)">
@@ -64,13 +63,14 @@ import { QuestionRepository } from './question.repository';
       ><code
         >language, category, question_type, difficulty, question, option_a,
         option_b, option_c, option_d, correct_answer, accepted_answers,
-        explanation, scripture_reference, testament, scope_definition, topics, tags</code
+        explanation, scripture_reference, testament, scope_definition, topics, tags,
+        media_storage_path, media_download_url, media_mime_type, media_alt_text</code
       >
       <p>
         Use <code>scope_definition</code> like <code>Daniel:2,5; Revelation:2-3</code>.
         JSON imports must provide a structured <code>passages</code> array. Complex answers can use <code>answer_data_json</code>. Every imported
-        row is saved as an inactive Draft and must be reviewed before
-        publishing.
+        pictionary question must have four multiple-choice options and image media with
+        <code>storagePath</code>, <code>downloadUrl</code>, and <code>altText</code>.
       </p>
     </aside>`,
   styles: [
@@ -353,16 +353,16 @@ export class AdminImportPage {
           : 'csv';
     }
   }
-  async import() {
+  async import(publish: boolean) {
     this.busy = true;
     try {
       const valid = this.rows
         .filter((x) => x.included && !this.hasErrors(x))
         .map((x) => x.question!);
-      await this.repo.importDrafts(valid);
+      await this.repo.importQuestions(valid, publish);
       this.rows = [];
       this.input = '';
-      alert(`${valid.length} questions imported as drafts.`);
+      alert(`${valid.length} questions imported${publish ? ' and published for gameplay' : ' as drafts'}.`);
     } finally {
       this.busy = false;
     }

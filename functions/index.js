@@ -488,7 +488,7 @@ function requireAdmin(handler) {
 }
 
 const CONTENT_CATEGORIES = ['characters','scripture','stories','places','bible_knowledge'];
-const CONTENT_TYPES = ['multiple_choice','pictionary','verse_completion','reference_match','who_am_i','who_said_it','sequence','map_challenge','emoji_challenge','true_false','image_reveal','zoom_challenge','match_pairs','odd_one_out','what_happens_next','arrange_verse'];
+const CONTENT_TYPES = ['multiple_choice','pictionary','verse_completion','reference_match','who_am_i','who_said_it','sequence','map_challenge','emoji_challenge','true_false','match_pairs','odd_one_out','what_happens_next','arrange_verse'];
 const CONTENT_DIFFICULTIES = ['easy','medium','hard','expert'];
 function validateContentQuestion(question, publishing = false) {
   const errors = [];
@@ -498,15 +498,43 @@ function validateContentQuestion(question, publishing = false) {
   if (!['en','es'].includes(question?.language)) errors.push('Invalid language.');
   if (typeof question?.prompt !== 'string' || question.prompt.trim().length < 10 || question.prompt.length > 500) errors.push('Prompt must contain 10–500 characters.');
   if (!question?.answerData?.type) errors.push('Answer configuration is required.');
-  if (question?.questionType === 'multiple_choice') {
+  if (['multiple_choice', 'pictionary'].includes(question?.questionType)) {
     const options = question.answerData?.options || [];
+    if (question.answerData?.type !== 'multiple_choice') errors.push('This question type requires multiple-choice answer data.');
     if (options.length !== 4) errors.push('Multiple choice requires four options.');
     if (new Set(options.map(option => String(option.text).trim().toLowerCase())).size !== options.length) errors.push('Multiple-choice options must be unique.');
+    if ((question.answerData?.correctOptionIds || []).length !== 1) errors.push('Multiple choice requires exactly one correct option.');
     if (!(question.answerData?.correctOptionIds || []).every(id => options.some(option => option.id === id))) errors.push('Correct option is invalid.');
+  }
+  if (question?.questionType === 'sequence') {
+    const items = question.answerData?.items || [];
+    if (question.answerData?.type !== 'sequence') errors.push('Sequence requires sequence answer data.');
+    if (items.length < 2) errors.push('Sequence requires at least two items.');
+    if (new Set(items.map(item => String(item.text).trim().toLowerCase())).size !== items.length) errors.push('Sequence items must be unique.');
+    const positions = items.map(item => item.correctPosition).sort((a, b) => a - b);
+    if (positions.some((position, index) => position !== index)) errors.push('Sequence positions must start at zero and be consecutive.');
+  }
+  if (question?.questionType === 'match_pairs') {
+    const pairs = question.answerData?.pairs || [];
+    if (question.answerData?.type !== 'match_pairs') errors.push('Match Pairs requires match-pairs answer data.');
+    if (pairs.length < 2) errors.push('Match Pairs requires at least two pairs.');
+    if (pairs.some(pair => !String(pair.left || '').trim() || !String(pair.right || '').trim())) errors.push('Every pair requires both a left and right value.');
+    if (new Set(pairs.map(pair => String(pair.left).trim().toLowerCase())).size !== pairs.length) errors.push('Left-side pair values must be unique.');
+    if (new Set(pairs.map(pair => String(pair.right).trim().toLowerCase())).size !== pairs.length) errors.push('Right-side pair values must be unique.');
+  }
+  if (question?.questionType === 'arrange_verse') {
+    const segments = question.answerData?.segments || [];
+    if (question.answerData?.type !== 'arrange_verse') errors.push('Arrange the Verse requires arrange-verse answer data.');
+    if (segments.length < 2) errors.push('Arrange the Verse requires at least two segments.');
+    if (segments.some(segment => !String(segment.id || '').trim() || !String(segment.text || '').trim())) errors.push('Every verse segment requires an ID and text.');
+    if (new Set(segments.map(segment => String(segment.id))).size !== segments.length) errors.push('Verse segment IDs must be unique.');
+    const positions = segments.map(segment => segment.correctPosition).sort((a, b) => a - b);
+    if (positions.some((position, index) => position !== index)) errors.push('Verse segment positions must start at zero and be consecutive.');
   }
   if (publishing && !String(question?.scriptureReference || '').trim()) errors.push('Scripture reference is required to publish.');
   if (publishing && (!Array.isArray(question?.passages) || !question.passages.length)) errors.push('At least one structured biblical passage is required to publish.');
-  if (publishing && ['pictionary','image_reveal','zoom_challenge','map_challenge'].includes(question?.questionType) && !question?.media?.storagePath) errors.push('This question type requires media.');
+  if (publishing && ['pictionary','map_challenge'].includes(question?.questionType) && !question?.media?.storagePath) errors.push('This question type requires media.');
+  if (publishing && question?.questionType === 'pictionary' && !question?.media?.downloadUrl) errors.push('Pictionary requires a playable image URL.');
   if (publishing && question?.media?.storagePath && !String(question.media.altText || '').trim()) errors.push('Media alt text is required.');
   if (question?.passages && !Array.isArray(question.passages)) errors.push('Passages must be an array.');
   for (const passage of question?.passages || []) {
@@ -554,13 +582,14 @@ exports.publishQuestion = functions.https.onCall(requireAdmin(async (data, conte
 
 exports.bulkImportQuestions = functions.https.onCall(requireAdmin(async (data, context) => {
   const questions = data?.questions;
-  if (!Array.isArray(questions) || !questions.length || questions.length > 1000) throw new functions.https.HttpsError('invalid-argument','Import must contain 1–1000 questions.');
-  const failures = questions.map((question,index)=>({index,errors:validateContentQuestion(question,false)})).filter(result=>result.errors.length);
+  const publish = data?.publish === true;
+  if (!Array.isArray(questions) || !questions.length || questions.length > 400) throw new functions.https.HttpsError('invalid-argument','Each import batch must contain 1–400 questions.');
+  const failures = questions.map((question,index)=>({index,errors:validateContentQuestion(withNormalizedScope(question),publish)})).filter(result=>result.errors.length);
   if (failures.length) throw new functions.https.HttpsError('invalid-argument','Import contains invalid questions.',{failures});
   const externalIds = questions.map(q=>q.externalId).filter(Boolean); if (new Set(externalIds).size !== externalIds.length) throw new functions.https.HttpsError('already-exists','Import contains duplicate external IDs.');
   let imported=0;
-  for(let offset=0;offset<questions.length;offset+=400){const batch=db.batch();questions.slice(offset,offset+400).forEach(question=>{const ref=db.collection('questions').doc();batch.set(ref,{...withNormalizedScope(question),id:ref.id,status:'draft',isActive:false,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp(),createdBy:context.auth.uid,updatedBy:context.auth.uid});});await batch.commit();imported+=Math.min(400,questions.length-offset);}
-  functions.logger.info('content_questions_imported',{actorId:context.auth.uid,count:imported});return{imported};
+  for(let offset=0;offset<questions.length;offset+=400){const batch=db.batch();questions.slice(offset,offset+400).forEach(question=>{const ref=db.collection('questions').doc();batch.set(ref,{...withNormalizedScope(question),id:ref.id,status:publish?'published':'draft',isActive:publish,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp(),createdBy:context.auth.uid,updatedBy:context.auth.uid,publishedAt:publish?FieldValue.serverTimestamp():null,publishedBy:publish?context.auth.uid:null});});await batch.commit();imported+=Math.min(400,questions.length-offset);}
+  functions.logger.info('content_questions_imported',{actorId:context.auth.uid,count:imported,published:publish});return{imported,published:publish};
 }));
 
 async function joinOrAttemptQuickMatch(playerId) {
@@ -927,6 +956,39 @@ function publicMatchQuestion(id, question, questionPool = []) {
   const answer = question.answerData || {};
   let choices = [];
   if (answer.type === 'multiple_choice') choices = (answer.options || []).map((option) => option.text);
+  else if (answer.type === 'sequence') {
+    choices = [...(answer.items || [])]
+      .sort((left, right) => left.correctPosition - right.correctPosition)
+      .map((item) => item.text)
+      .sort(() => Math.random() - 0.5);
+    return { id, text: question.prompt, choices, questionType: question.questionType, difficulty: question.difficulty };
+  }
+  else if (answer.type === 'match_pairs') {
+    const pairs = answer.pairs || [];
+    return {
+      id,
+      text: question.prompt,
+      choices: [],
+      questionType: question.questionType,
+      difficulty: question.difficulty,
+      matchPairs: {
+        left: pairs.map((pair) => pair.left).sort(() => Math.random() - 0.5),
+        right: pairs.map((pair) => pair.right).sort(() => Math.random() - 0.5),
+      },
+    };
+  }
+  else if (answer.type === 'arrange_verse') {
+    return {
+      id,
+      text: question.prompt,
+      choices: [],
+      questionType: question.questionType,
+      difficulty: question.difficulty,
+      verseSegments: [...(answer.segments || [])]
+        .map((segment) => ({ id: segment.id, text: segment.text }))
+        .sort(() => Math.random() - 0.5),
+    };
+  }
   else if (answer.type === 'true_false') {
     return {
       id,
@@ -947,7 +1009,14 @@ function publicMatchQuestion(id, question, questionPool = []) {
     .filter(Boolean).map((choice) => [String(choice).trim().toLowerCase(), String(choice).trim()])).values()]
     .slice(0, 4)
     .sort(() => Math.random() - 0.5);
-  return { id, text: question.prompt, choices, questionType: question.questionType, difficulty: question.difficulty };
+  const result = { id, text: question.prompt, choices, questionType: question.questionType, difficulty: question.difficulty };
+  if (question.questionType === 'pictionary') {
+    result.media = {
+      downloadUrl: question.media.downloadUrl,
+      altText: question.media.altText,
+    };
+  }
+  return result;
 }
 
 function correctAnswerForQuestion(question) {
@@ -956,6 +1025,21 @@ function correctAnswerForQuestion(question) {
     return (answer.options || []).find((option) => (answer.correctOptionIds || []).includes(option.id))?.text || '';
   }
   if (answer.type === 'true_false') return answer.correctValue ? 'True' : 'False';
+  if (answer.type === 'sequence') {
+    return JSON.stringify([...(answer.items || [])]
+      .sort((left, right) => left.correctPosition - right.correctPosition)
+      .map((item) => String(item.text).trim()));
+  }
+  if (answer.type === 'match_pairs') {
+    return JSON.stringify((answer.pairs || [])
+      .map((pair) => ({ left: String(pair.left).trim(), right: String(pair.right).trim() }))
+      .sort((left, right) => left.left.localeCompare(right.left)));
+  }
+  if (answer.type === 'arrange_verse') {
+    return JSON.stringify([...(answer.segments || [])]
+      .sort((left, right) => left.correctPosition - right.correctPosition)
+      .map((segment) => String(segment.id)));
+  }
   return answer.primaryAnswer || '';
 }
 

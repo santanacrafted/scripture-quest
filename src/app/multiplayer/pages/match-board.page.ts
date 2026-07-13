@@ -12,6 +12,7 @@ import { Subscription } from 'rxjs';
 import { firebaseAuth } from '../../firebase';
 import { FirestoreQuickMatch } from '../quick-match.models';
 import { QuickMatchService } from '../quick-match.service';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 @Component({
   selector: 'app-match-board-page',
   standalone: true,
@@ -44,6 +45,10 @@ import { QuickMatchService } from '../quick-match.service';
       </p>
       <div class="wheel-shell" [class.charging]="charging">
       <div class="wheel-marker">▼</div>
+      <div *ngIf="charging" class="charge-feedback">
+        <div class="charge-track"><i [style.width.%]="chargePercent"></i></div>
+        <b>{{chargePercent >= 100 ? 'MAX POWER!' : 'HOLD TO CHARGE'}}</b>
+      </div>
       <div class="wheel" [class.spinning]="spinning"
         [style.transform]="'rotate(' + wheelRotation + 'deg)'"
         [style.transition-duration.ms]="spinDuration"
@@ -66,7 +71,9 @@ import { QuickMatchService } from '../quick-match.service';
       </div>
       <h2 *ngIf="!spinning">{{ statusTitle }}</h2>
       <p *ngIf="!spinning">{{ match.lastTurnSummary }}</p>
-      <button *ngIf="!spinning" class="action" [disabled]="!isMyTurn" (click)="act()">
+      <button *ngIf="!spinning" class="action" [disabled]="!isMyTurn"
+        (pointerdown)="startWheelCharge($event)" (pointerup)="releaseWheel($event)"
+        (pointercancel)="cancelWheelCharge()" (click)="act()">
         {{ actionLabel }}
       </button>
     </section>
@@ -263,6 +270,7 @@ import { QuickMatchService } from '../quick-match.service';
       .wheel-shell { position:relative; }
       .wheel-marker { position:absolute; z-index:4; left:50%; top:-1.45rem; transform:translateX(-50%); color:#ffe078; font-size:2.2rem; line-height:1; filter:drop-shadow(0 3px 2px #000); }
       .wheel-shell.charging .wheel { filter:brightness(1.15); box-shadow:0 0 0 5px #352711,0 0 35px #ffd96899; }
+      .charge-feedback{position:absolute;z-index:6;left:50%;bottom:-4.4rem;width:min(78vw,18rem);transform:translateX(-50%);pointer-events:none}.charge-track{height:1rem;overflow:hidden;border:2px solid #ffe18a;border-radius:1rem;background:#17140d;box-shadow:0 0 18px #f7ca55aa}.charge-track i{display:block;height:100%;background:linear-gradient(90deg,#42d39a,#f6d34e 58%,#ff5a3d);box-shadow:0 0 16px #fff;transition:width .06s linear}.charge-feedback b{display:block;margin-top:.35rem;color:#ffe17d;font-size:.74rem;letter-spacing:.14em;text-shadow:0 2px 5px #000}.wheel-shell.charging{animation:charge-rumble .12s linear infinite alternate}.wheel-shell.charging:has(.charge-track i[style*="100"]){animation-duration:.055s}@keyframes charge-rumble{from{transform:translateX(-1px)}to{transform:translateX(1px)}}
       .wheel button {
         position: absolute;
         inset: 0;
@@ -370,9 +378,11 @@ export class MatchBoardPage implements OnInit, OnDestroy {
   ];
   spinning = false;
   charging = false;
+  chargePercent = 0;
   wheelRotation = 0;
   spinDuration = 0;
   private chargeStartedAt = 0;
+  private chargeTimer?: ReturnType<typeof setTimeout>;
   transitionCategory: MatchCategory | null = null;
   displayedQuestionType = 'Mystery challenge';
   rouletteLanded = false;
@@ -399,6 +409,8 @@ export class MatchBoardPage implements OnInit, OnDestroy {
   }
   ngOnDestroy() {
     this.subscription?.unsubscribe();
+    clearTimeout(this.chargeTimer);
+    if (this.charging) void Haptics.selectionEnd();
   }
   get opponentId() {
     return this.match?.playerIds.find((x) => x !== this.myId) || '';
@@ -427,16 +439,35 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     event.preventDefault();
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     this.charging = true;
+    this.chargePercent = 0;
     this.chargeStartedAt = performance.now();
+    void Haptics.selectionStart();
+    this.runChargePulse();
   }
   releaseWheel(event: PointerEvent) {
     if (!this.charging) return;
     event.preventDefault();
     this.charging = false;
+    clearTimeout(this.chargeTimer);
+    void Haptics.selectionEnd();
     const charge = Math.min(1, Math.max(0.08, (performance.now() - this.chargeStartedAt) / 1500));
     void this.spinWheelWithCharge(charge);
   }
-  cancelWheelCharge() { this.charging = false; }
+  cancelWheelCharge() { this.charging = false; clearTimeout(this.chargeTimer); this.chargePercent = 0; void Haptics.selectionEnd(); }
+  private runChargePulse() {
+    if (!this.charging) return;
+    const charge = Math.min(1, (performance.now() - this.chargeStartedAt) / 1500);
+    this.chargePercent = Math.round(charge * 100);
+    const style = charge > .72 ? ImpactStyle.Heavy : charge > .35 ? ImpactStyle.Medium : ImpactStyle.Light;
+    void Haptics.selectionChanged();
+    void Haptics.impact({ style }).catch(() => navigator.vibrate?.(charge > .72 ? 35 : 18));
+    if (charge >= 1) {
+      void Haptics.vibrate({ duration: 180 }).catch(() => navigator.vibrate?.([45, 35, 65]));
+      return;
+    }
+    const nextPulseMs = Math.round(210 - charge * 145);
+    this.chargeTimer = setTimeout(() => this.runChargePulse(), nextPulseMs);
+  }
   get availableCaptureCategories() {
     const owned = this.match?.players[this.myId]?.lights || [];
     return this.categories.filter(category => !owned.includes(category));

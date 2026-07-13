@@ -214,24 +214,9 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
                 formControlName="mediaAltText"
                 placeholder="Describe the image for accessibility"
             /></label>
-            <div
-              class="grid"
-              *ngIf="form.value.questionType === 'image_reveal'"
-            >
-              <label
-                >Reveal rows<input
-                  type="number"
-                  min="2"
-                  max="8"
-                  formControlName="revealRows" /></label
-              ><label
-                >Reveal columns<input
-                  type="number"
-                  min="2"
-                  max="8"
-                  formControlName="revealColumns"
-              /></label>
-            </div>
+            <small *ngIf="form.value.questionType === 'pictionary'">
+              Pictionary displays this image above four multiple-choice answers.
+            </small>
           </section>
         </div>
         <aside>
@@ -242,8 +227,14 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
             <h3>
               {{ form.value.prompt || 'Your question prompt appears here.' }}
             </h3>
+            <img
+              *ngIf="form.value.questionType === 'pictionary' && media"
+              class="phone-pictionary"
+              [src]="media.downloadUrl"
+              [alt]="form.value.mediaAltText || media.altText"
+            />
             <button *ngFor="let answer of previewAnswers; let i = index">
-              <i>{{ letters[i] }}</i
+              <i>{{ answerKind === 'sequence' ? i + 1 : letters[i] }}</i
               >{{ answer || 'Answer option' }}
             </button>
             <p *ngIf="form.value.scriptureReference">
@@ -476,6 +467,16 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
         font: 900 1.25rem Georgia;
         margin: 2rem 0 1rem;
       }
+      .phone-pictionary {
+        display: block;
+        width: 100%;
+        height: 150px;
+        margin-top: 0.75rem;
+        border: 2px solid #e5c56b;
+        border-radius: 10px;
+        object-fit: contain;
+        background: #0d211d;
+      }
       .phone button {
         display: flex;
         width: 100%;
@@ -662,8 +663,6 @@ export class QuestionEditorPage implements OnInit {
     translationGroupId: [''],
     contentConceptId: [''],
     mediaAltText: [''],
-    revealRows: [3],
-    revealColumns: [3],
     primaryAnswer: [''],
     acceptedAnswers: [''],
     caseSensitive: [false],
@@ -700,8 +699,6 @@ export class QuestionEditorPage implements OnInit {
               ? q.answerData.correctValue
               : true,
           mediaAltText: q.media?.altText || '',
-          revealRows: q.media?.revealGrid?.rows || 3,
-          revealColumns: q.media?.revealGrid?.columns || 3,
         });
         if (q.answerData.type === 'multiple_choice') {
           q.answerData.options.forEach((o, i) =>
@@ -720,7 +717,8 @@ export class QuestionEditorPage implements OnInit {
   }
   get answerKind() {
     const t = this.form.value.questionType as ContentQuestionType;
-    if (t === 'multiple_choice') return t;
+    if (t === 'multiple_choice' || t === 'pictionary')
+      return 'multiple_choice';
     if (t === 'true_false') return t;
     if (t === 'sequence' || t === 'arrange_verse') return 'sequence';
     if (t === 'match_pairs') return t;
@@ -736,7 +734,17 @@ export class QuestionEditorPage implements OnInit {
     return this.form.value.difficulty;
   }
   get previewAnswers() {
-    return this.answerKind === 'multiple_choice'
+    return this.answerKind === 'match_pairs'
+      ? (this.form.value.primaryAnswer || '')
+          .split('\n')
+          .map((item) => item.trim().replace('|', ' → '))
+          .filter(Boolean)
+      : this.answerKind === 'sequence'
+      ? (this.form.value.primaryAnswer || '')
+          .split('\n')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : this.answerKind === 'multiple_choice'
       ? this.options.value
       : this.answerKind === 'true_false'
       ? ['True', 'False']
@@ -860,13 +868,6 @@ export class QuestionEditorPage implements OnInit {
           ? {
               ...this.media,
               altText: v.mediaAltText || '',
-              revealGrid:
-                v.questionType === 'image_reveal'
-                  ? {
-                      rows: Number(v.revealRows) || 3,
-                      columns: Number(v.revealColumns) || 3,
-                    }
-                  : this.media.revealGrid,
             }
           : undefined,
         language: v.language as 'en' | 'es',
@@ -1001,12 +1002,9 @@ export class QuestionEditorPage implements OnInit {
       try { parseBiblicalScope(v.scopeDefinition); }
       catch (error) { errors.push(error instanceof Error ? error.message : 'Biblical quiz scope is invalid.'); }
     }
-    const visual = [
-      'pictionary',
-      'image_reveal',
-      'zoom_challenge',
-      'map_challenge',
-    ].includes(v.questionType || '');
+    const visual = ['pictionary', 'map_challenge'].includes(
+      v.questionType || ''
+    );
     if (forReviewOrPublish && visual && !this.media)
       errors.push(
         `${this.typeLabel(v.questionType || '')} requires an uploaded image.`

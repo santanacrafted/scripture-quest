@@ -3,7 +3,7 @@ export interface CategoryProgress { current:number; target:number; completed:boo
 export interface MatchCategoryProgressMap { [category:string]:CategoryProgress; }
 export type MatchCategory = 'characters' | 'scripture' | 'stories' | 'places' | 'knowledge';
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
-export type QuestionType = 'multiple_choice' | 'verse_completion' | 'reference_match' | 'who_am_i' | 'who_said_it' | 'sequence' | 'map_challenge' | 'emoji_challenge' | 'true_false' | 'odd_one_out' | 'what_happens_next' | 'arrange_the_verse';
+export type QuestionType = 'multiple_choice' | 'pictionary' | 'verse_completion' | 'reference_match' | 'who_am_i' | 'who_said_it' | 'sequence' | 'map_challenge' | 'emoji_challenge' | 'true_false' | 'match_pairs' | 'odd_one_out' | 'what_happens_next' | 'arrange_verse';
 export type TurnPhase = 'spin' | 'question' | 'light_challenge' | 'trial' | 'complete';
 
 export interface PlayerLightState { sparks: number; lights: MatchCategory[]; }
@@ -16,7 +16,7 @@ export interface Match {
   inviteCode?: string | null; categoryProgress?: Record<string,MatchCategoryProgressMap>;
 }
 export interface MatchTurn { id:string; matchId:string; playerId:string; questionId:string; selectedAnswer:string; isCorrect:boolean; category:MatchCategory; startedAt:string; answeredAt:string; timeExpired:boolean; }
-export interface Question { id:string; category:MatchCategory; questionType:QuestionType; difficulty:Difficulty; text:string; choices:string[]; correctAnswer:string; reference:string; explanation:string; }
+export interface Question { id:string; category:MatchCategory; questionType:QuestionType; difficulty:Difficulty; text:string; choices:string[]; correctAnswer:string; reference:string; explanation:string; media?: { downloadUrl:string; altText:string }; matchPairs?: { left:string[]; right:string[] }; verseSegments?: { id:string; text:string }[]; }
 
 export const MULTIPLAYER_CATEGORIES: MatchCategory[] = ['characters','scripture','stories','places','knowledge'];
 export const CATEGORY_LABELS: Record<MatchCategory,string> = { characters:'Characters', scripture:'Scripture', stories:'Stories & Events', places:'Places', knowledge:'Bible Knowledge' };

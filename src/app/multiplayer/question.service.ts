@@ -68,7 +68,7 @@ export class QuestionService {
     [
       's3',
       'scripture',
-      'arrange_the_verse',
+      'arrange_verse',
       'expert',
       'Which is the correct opening of John 1:1?',
       [
@@ -259,10 +259,7 @@ export class QuestionService {
     return {
       id,
       category,
-      questionType:
-        data.questionType === 'arrange_verse'
-          ? 'arrange_the_verse'
-          : data.questionType,
+      questionType: data.questionType,
       difficulty: data.difficulty,
       text: data.prompt,
       choices,
