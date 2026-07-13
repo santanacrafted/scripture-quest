@@ -1,107 +1,80 @@
-[debug] [2026-07-13T00:31:57.572Z] ----------------------------------------------------------------------
-[debug] [2026-07-13T00:31:57.573Z] Command:       /usr/local/bin/node /usr/local/bin/firebase deploy --only hosting,functions
-[debug] [2026-07-13T00:31:57.573Z] CLI Version:   14.4.0
-[debug] [2026-07-13T00:31:57.573Z] Platform:      darwin
-[debug] [2026-07-13T00:31:57.574Z] Node Version:  v22.14.0
-[debug] [2026-07-13T00:31:57.574Z] Time:          Sun Jul 12 2026 20:31:57 GMT-0400 (Eastern Daylight Time)
-[debug] [2026-07-13T00:31:57.574Z] ----------------------------------------------------------------------
+[debug] [2026-07-13T00:34:33.446Z] ----------------------------------------------------------------------
+[debug] [2026-07-13T00:34:33.451Z] Command:       /usr/local/bin/node /usr/local/bin/firebase deploy --only hosting,functions
+[debug] [2026-07-13T00:34:33.451Z] CLI Version:   14.4.0
+[debug] [2026-07-13T00:34:33.451Z] Platform:      darwin
+[debug] [2026-07-13T00:34:33.452Z] Node Version:  v22.14.0
+[debug] [2026-07-13T00:34:33.452Z] Time:          Sun Jul 12 2026 20:34:33 GMT-0400 (Eastern Daylight Time)
+[debug] [2026-07-13T00:34:33.452Z] ----------------------------------------------------------------------
 [debug] 
-[debug] [2026-07-13T00:31:57.644Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
-[debug] [2026-07-13T00:31:57.644Z] > authorizing via signed-in user (santanacrafted@gmail.com)
-[debug] [2026-07-13T00:31:57.644Z] [iam] checking project scripture-quest-7e3d5 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
-[debug] [2026-07-13T00:31:57.645Z] Checked if tokens are valid: false, expires at: 1783903495956
-[debug] [2026-07-13T00:31:57.645Z] Checked if tokens are valid: false, expires at: 1783903495956
-[debug] [2026-07-13T00:31:57.645Z] > refreshing access token with scopes: []
-[debug] [2026-07-13T00:31:57.645Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
-[debug] [2026-07-13T00:31:57.645Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
-[debug] [2026-07-13T00:31:57.794Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
-[debug] [2026-07-13T00:31:57.794Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
-[debug] [2026-07-13T00:31:57.803Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5:testIamPermissions [none]
-[debug] [2026-07-13T00:31:57.803Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5:testIamPermissions x-goog-quota-user=projects/scripture-quest-7e3d5
-[debug] [2026-07-13T00:31:57.803Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
-[debug] [2026-07-13T00:31:57.960Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5:testIamPermissions 200
-[debug] [2026-07-13T00:31:57.960Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
-[debug] [2026-07-13T00:31:57.960Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:57.960Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:57.960Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/scripture-quest-7e3d5/serviceAccounts/scripture-quest-7e3d5@appspot.gserviceaccount.com:testIamPermissions [none]
-[debug] [2026-07-13T00:31:57.960Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/scripture-quest-7e3d5/serviceAccounts/scripture-quest-7e3d5@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
-[debug] [2026-07-13T00:31:58.298Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/scripture-quest-7e3d5/serviceAccounts/scripture-quest-7e3d5@appspot.gserviceaccount.com:testIamPermissions 200
-[debug] [2026-07-13T00:31:58.298Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/scripture-quest-7e3d5/serviceAccounts/scripture-quest-7e3d5@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-07-13T00:34:33.526Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-13T00:34:33.526Z] > authorizing via signed-in user (santanacrafted@gmail.com)
+[debug] [2026-07-13T00:34:33.526Z] [iam] checking project scripture-quest-7e3d5 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-07-13T00:34:33.527Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:33.527Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:33.527Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5:testIamPermissions [none]
+[debug] [2026-07-13T00:34:33.527Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5:testIamPermissions x-goog-quota-user=projects/scripture-quest-7e3d5
+[debug] [2026-07-13T00:34:33.527Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-07-13T00:34:33.699Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5:testIamPermissions 200
+[debug] [2026-07-13T00:34:33.700Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-07-13T00:34:33.700Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:33.700Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:33.700Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/scripture-quest-7e3d5/serviceAccounts/scripture-quest-7e3d5@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-07-13T00:34:33.700Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/scripture-quest-7e3d5/serviceAccounts/scripture-quest-7e3d5@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-07-13T00:34:34.007Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/scripture-quest-7e3d5/serviceAccounts/scripture-quest-7e3d5@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2026-07-13T00:34:34.007Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/scripture-quest-7e3d5/serviceAccounts/scripture-quest-7e3d5@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
 [info] 
 [info] === Deploying to 'scripture-quest-7e3d5'...
 [info] 
 [info] i  deploying functions 
-[debug] [2026-07-13T00:31:58.301Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:58.301Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:58.301Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudresourcemanager.googleapis.com [none]
-[debug] [2026-07-13T00:31:58.301Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudresourcemanager.googleapis.com x-goog-quota-user=projects/scripture-quest-7e3d5
-[debug] [2026-07-13T00:31:58.750Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudresourcemanager.googleapis.com 200
-[debug] [2026-07-13T00:31:58.750Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudresourcemanager.googleapis.com [omitted]
-[debug] [2026-07-13T00:31:58.750Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:58.750Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:58.750Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5 [none]
-[debug] [2026-07-13T00:31:58.853Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5 200
-[debug] [2026-07-13T00:31:58.853Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5 {"projectNumber":"25147385914","projectId":"scripture-quest-7e3d5","lifecycleState":"ACTIVE","name":"scripture-quest","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-07-07T14:14:18.938Z"}
+[debug] [2026-07-13T00:34:34.010Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.010Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.010Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudresourcemanager.googleapis.com [none]
+[debug] [2026-07-13T00:34:34.010Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudresourcemanager.googleapis.com x-goog-quota-user=projects/scripture-quest-7e3d5
+[debug] [2026-07-13T00:34:34.376Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudresourcemanager.googleapis.com 200
+[debug] [2026-07-13T00:34:34.376Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudresourcemanager.googleapis.com [omitted]
+[debug] [2026-07-13T00:34:34.377Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.377Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.377Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5 [none]
+[debug] [2026-07-13T00:34:34.472Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5 200
+[debug] [2026-07-13T00:34:34.473Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/scripture-quest-7e3d5 {"projectNumber":"25147385914","projectId":"scripture-quest-7e3d5","lifecycleState":"ACTIVE","name":"scripture-quest","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-07-07T14:14:18.938Z"}
 [info] i  functions: preparing codebase default for deployment 
 [info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
-[debug] [2026-07-13T00:31:58.853Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:58.853Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:58.854Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:58.854Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.474Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.474Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.474Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.474Z] Checked if tokens are valid: true, expires at: 1783906316794
 [info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
-[debug] [2026-07-13T00:31:58.854Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:58.854Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.475Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.475Z] Checked if tokens are valid: true, expires at: 1783906316794
 [info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
-[debug] [2026-07-13T00:31:58.854Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:58.854Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:58.854Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudfunctions.googleapis.com [none]
-[debug] [2026-07-13T00:31:58.854Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudfunctions.googleapis.com x-goog-quota-user=projects/scripture-quest-7e3d5
-[debug] [2026-07-13T00:31:58.854Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/runtimeconfig.googleapis.com [none]
-[debug] [2026-07-13T00:31:58.854Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/runtimeconfig.googleapis.com x-goog-quota-user=projects/scripture-quest-7e3d5
-[debug] [2026-07-13T00:31:58.856Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudbuild.googleapis.com [none]
-[debug] [2026-07-13T00:31:58.856Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudbuild.googleapis.com x-goog-quota-user=projects/scripture-quest-7e3d5
-[debug] [2026-07-13T00:31:58.857Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/artifactregistry.googleapis.com [none]
-[debug] [2026-07-13T00:31:58.857Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/artifactregistry.googleapis.com x-goog-quota-user=projects/scripture-quest-7e3d5
-[debug] [2026-07-13T00:31:59.164Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudfunctions.googleapis.com 200
-[debug] [2026-07-13T00:31:59.164Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudfunctions.googleapis.com [omitted]
-[info] ✔  functions: required API cloudfunctions.googleapis.com is enabled 
-[debug] [2026-07-13T00:31:59.193Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/runtimeconfig.googleapis.com 200
-[debug] [2026-07-13T00:31:59.193Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/runtimeconfig.googleapis.com [omitted]
-[debug] [2026-07-13T00:31:59.229Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudbuild.googleapis.com 200
-[debug] [2026-07-13T00:31:59.230Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudbuild.googleapis.com [omitted]
+[debug] [2026-07-13T00:34:34.475Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.475Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.475Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudfunctions.googleapis.com [none]
+[debug] [2026-07-13T00:34:34.475Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudfunctions.googleapis.com x-goog-quota-user=projects/scripture-quest-7e3d5
+[debug] [2026-07-13T00:34:34.476Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/runtimeconfig.googleapis.com [none]
+[debug] [2026-07-13T00:34:34.476Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/runtimeconfig.googleapis.com x-goog-quota-user=projects/scripture-quest-7e3d5
+[debug] [2026-07-13T00:34:34.478Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudbuild.googleapis.com [none]
+[debug] [2026-07-13T00:34:34.478Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudbuild.googleapis.com x-goog-quota-user=projects/scripture-quest-7e3d5
+[debug] [2026-07-13T00:34:34.480Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/artifactregistry.googleapis.com [none]
+[debug] [2026-07-13T00:34:34.480Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/artifactregistry.googleapis.com x-goog-quota-user=projects/scripture-quest-7e3d5
+[debug] [2026-07-13T00:34:34.862Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudbuild.googleapis.com 200
+[debug] [2026-07-13T00:34:34.862Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudbuild.googleapis.com [omitted]
 [info] ✔  functions: required API cloudbuild.googleapis.com is enabled 
-[debug] [2026-07-13T00:31:59.254Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/artifactregistry.googleapis.com 200
-[debug] [2026-07-13T00:31:59.254Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/artifactregistry.googleapis.com [omitted]
+[debug] [2026-07-13T00:34:34.863Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/runtimeconfig.googleapis.com 200
+[debug] [2026-07-13T00:34:34.863Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/runtimeconfig.googleapis.com [omitted]
+[debug] [2026-07-13T00:34:34.864Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/artifactregistry.googleapis.com 200
+[debug] [2026-07-13T00:34:34.864Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/artifactregistry.googleapis.com [omitted]
 [info] ✔  artifactregistry: required API artifactregistry.googleapis.com is enabled 
-[debug] [2026-07-13T00:31:59.254Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:59.254Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:59.255Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/scripture-quest-7e3d5/adminSdkConfig [none]
-[debug] [2026-07-13T00:31:59.725Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/scripture-quest-7e3d5/adminSdkConfig 200
-[debug] [2026-07-13T00:31:59.725Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/scripture-quest-7e3d5/adminSdkConfig {"projectId":"scripture-quest-7e3d5","storageBucket":"scripture-quest-7e3d5.firebasestorage.app"}
-[debug] [2026-07-13T00:31:59.725Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:59.725Z] Checked if tokens are valid: true, expires at: 1783906316794
-[debug] [2026-07-13T00:31:59.725Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/scripture-quest-7e3d5/configs [none]
-[debug] [2026-07-13T00:32:00.215Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/scripture-quest-7e3d5/configs 200
-[debug] [2026-07-13T00:32:00.215Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/scripture-quest-7e3d5/configs {}
-[debug] [2026-07-13T00:32:00.218Z] Validating nodejs source
-[warn] ⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
-[warn] ⚠  functions: Please note that there will be breaking changes when you upgrade. 
-[debug] [2026-07-13T00:32:00.820Z] > [functions] package.json contents: {
-  "name": "functions",
-  "private": true,
-  "type": "commonjs",
-  "engines": {
-    "node": "22"
-  },
-  "dependencies": {
-    "firebase-admin": "^12.1.0",
-    "firebase-functions": "^5.0.0"
-  }
-}
-[debug] [2026-07-13T00:32:00.820Z] Building nodejs source
-[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
-[debug] [2026-07-13T00:32:00.820Z] Could not find functions.yaml. Must use http discovery
-[debug] [2026-07-13T00:32:00.829Z] Found firebase-functions binary at '/Users/darrensantana/scripture-quest/functions/node_modules/.bin/firebase-functions'
-[info] Serving at port 8518
-
-[debug] [2026-07-13T00:32:01.068Z] Got response from /__/functions.yaml {"endpoints":{"bootstrapContentAdmin":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"bootstrapContentAdmin"},"createMatch":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"createMatch"},"joinRandomMatch":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"joinRandomMatch"},"joinQuickMatchQueue":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"joinQuickMatchQueue"},"attemptQuickMatch":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"attemptQuickMatch"},"cancelQuickMatch":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"cancelQuickMatch"},"forfeitMatch":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"forfeitMatch"},"notifyForfeitWinner":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"eventTrigger":{"eventType":"providers/cloud.firestore/eventTypes/document.update","eventFilters":{"resource":"projects/scripture-quest-7e3d5/databases/(default)/documents/matches/{matchId}"},"retry":false},"labels":{},"entryPoint":"notifyForfeitWinner"},"deleteMatchForTesting":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"deleteMatchForTesting"},"expireStaleMatchmakingEntries":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"scheduleTrigger":{"schedule":"every 5 minutes","retryConfig":{"retryCount":null,"maxDoublings":null,"maxRetryDuration":null,"maxBackoffDuration":null,"minBackoffDuration":null},"timeZone":null},"labels":{},"entryPoint":"expireStaleMatchmakingEntries"},"notifyMatchedPlayer":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"eventTrigger":{"eventType":"providers/cloud.firestore/eventTypes/document.create","eventFilters":{"resource":"projects/scripture-quest-7e3d5/databases/(default)/documents/matches/{matchId}"},"retry":false},"labels":{},"entryPoint":"notifyMatchedPlayer"},"notifyPlayerTurn":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"eventTrigger":{"eventType":"providers/cloud.firestore/eventTypes/document.update","eventFilters":{"resource":"projects/scripture-quest-7e3d5/databases/(default)/documents/matches/{matchId}"},"retry":false},"labels":{},"entryPoint":"notifyPlayerTurn"},"spinMatchWheel":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"spinMatchWheel"},"chooseLightChallenge":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"chooseLightChallenge"},"submitAnswer":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"submitAnswer"},"expireTurn":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"expireTurn"},"completeMatch":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"completeMatch"},"requestRematch":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"requestRematch"},"saveContentQuestion":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"saveContentQuestion"},"publishQuestion":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"publishQuestion"},"bulkImportQuestions":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"bulkImportQuestions"},"searchPlayers":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"searchPlayers"},"sendFriendRequest":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"sendFriendRequest"},"respondToFriendRequest":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"respondToFriendRequest"},"cancelFriendRequest":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"cancelFriendRequest"},"removeFriend":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"removeFriend"},"blockPlayer":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"blockPlayer"},"unblockPlayer":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"unblockPlayer"},"sendFriendBattleInvitation":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"sendFriendBattleInvitation"},"respondToBattleInvitation":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"respondToBattleInvitation"},"cancelBattleInvitation":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"cancelBattleInvitation"},"setLobbyReady":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"setLobbyReady"},"startFriendBattle":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"startFriendBattle"},"hydrateMatchPlayerProfiles":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"hydrateMatchPlayerProfiles"},"expireBattleInvitations":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"scheduleTrigger":{"schedule":"every 15 minutes","retryConfig":{"retryCount":null,"maxDoublings":null,"maxRetryDuration":null,"maxBackoffDuration":null,"minBackoffDuration":null},"timeZone":null},"labels":{},"entryPoint":"expireBattleInvitations"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}],"extensions":{}}
+[debug] [2026-07-13T00:34:34.865Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudfunctions.googleapis.com 200
+[debug] [2026-07-13T00:34:34.865Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/scripture-quest-7e3d5/services/cloudfunctions.googleapis.com [omitted]
+[info] ✔  functions: required API cloudfunctions.googleapis.com is enabled 
+[debug] [2026-07-13T00:34:34.865Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.865Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:34.865Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/scripture-quest-7e3d5/adminSdkConfig [none]
+[debug] [2026-07-13T00:34:35.219Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/scripture-quest-7e3d5/adminSdkConfig 200
+[debug] [2026-07-13T00:34:35.220Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/scripture-quest-7e3d5/adminSdkConfig {"projectId":"scripture-quest-7e3d5","storageBucket":"scripture-quest-7e3d5.firebasestorage.app"}
+[debug] [2026-07-13T00:34:35.220Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:35.220Z] Checked if tokens are valid: true, expires at: 1783906316794
+[debug] [2026-07-13T00:34:35.220Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/scripture-quest-7e3d5/configs [none]
+[debug] [2026-07-13T00:34:35.624Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/scripture-quest-7e3d5/configs 200
+[debug] [2026-07-13T00:34:35.624Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/scripture-quest-7e3d5/configs {}

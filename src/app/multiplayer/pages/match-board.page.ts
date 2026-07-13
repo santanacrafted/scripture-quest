@@ -265,19 +265,22 @@ import { QuickMatchService } from '../quick-match.service';
       .wheel-shell.charging .wheel { filter:brightness(1.15); box-shadow:0 0 0 5px #352711,0 0 35px #ffd96899; }
       .wheel button {
         position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 50%;
-        height: 50%;
-        transform-origin: 0 0;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        transform-origin: 50% 50%;
         transform: rotate(calc(var(--i) * 72deg + 36deg));
         border: 0;
         background: transparent;
+        pointer-events: none;
       }
       .wheel button span {
+        position: absolute;
+        left: 50%;
+        top: 3%;
         display: block;
         font-size: 1.8rem;
-        transform: translate(45%, -10%) rotate(calc(var(--i) * -72deg - 36deg));
+        transform: translateX(-50%) rotate(calc(var(--i) * -72deg - 36deg));
       }
       .hub {
         position: absolute;
