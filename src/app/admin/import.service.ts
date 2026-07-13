@@ -83,6 +83,9 @@ export class ImportService {
       issues.push({ severity: 'error', message: 'Supported modes must include quiz, battle, or both.' });
     if (new Set(supportedModes).size !== supportedModes.length)
       issues.push({ severity: 'error', message: 'Supported modes must not contain duplicates.' });
+    if (['pictionary', 'map_challenge', 'emoji_challenge'].includes(type) &&
+        (supportedModes.length !== 1 || supportedModes[0] !== 'battle'))
+      issues.push({ severity: 'error', message: 'Pictionary, Map Challenge, and Emoji Challenge must be battle-only.' });
     if (!['en', 'es'].includes(language))
       issues.push({ severity: 'error', message: 'Language must be en or es.' });
     if (!prompt || prompt.length < 10)

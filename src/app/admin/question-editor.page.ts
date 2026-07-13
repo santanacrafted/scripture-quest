@@ -86,7 +86,7 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
             </div>
             <fieldset class="mode-options">
               <legend>Available in</legend>
-              <label *ngFor="let mode of supportedModeOptions"><input type="checkbox" [checked]="form.value.supportedModes?.includes(mode[0])" (change)="toggleSupportedMode(mode[0], $event)" />{{ mode[1] }}</label>
+              <label *ngFor="let mode of supportedModeOptions"><input type="checkbox" [checked]="form.value.supportedModes?.includes(mode[0])" [disabled]="isBattleOnlyType && mode[0] === 'quiz'" (change)="toggleSupportedMode(mode[0], $event)" />{{ mode[1] }}</label>
             </fieldset>
             <div class="grid">
               <label
@@ -774,9 +774,13 @@ export class QuestionEditorPage implements OnInit {
     this.form.controls.correctIndex.setValue(i);
   }
   resetAnswers() {
+    if (this.isBattleOnlyType) this.form.controls.supportedModes.setValue(['battle']);
     this.message = 'Answer fields updated for the selected type.';
     this.messageKind = 'info';
     this.validationErrors = [];
+  }
+  get isBattleOnlyType() {
+    return ['pictionary', 'map_challenge', 'emoji_challenge'].includes(this.form.value.questionType || '');
   }
   primary(a: QuestionAnswerData) {
     if (a.type === 'text') return a.primaryAnswer;
@@ -973,6 +977,8 @@ export class QuestionEditorPage implements OnInit {
     if (!(v.prompt || '').trim()) errors.push('Question prompt is required.');
     if (!v.scope) errors.push('Question scope is required.');
     if (!v.supportedModes.length) errors.push('Select at least one supported mode.');
+    if (this.isBattleOnlyType && (v.supportedModes.length !== 1 || v.supportedModes[0] !== 'battle'))
+      errors.push('Pictionary, Map Challenge, and Emoji Challenge must be battle-only.');
     else if ((v.prompt || '').trim().length < 10)
       errors.push('Question prompt must be at least 10 characters.');
     if (this.answerKind === 'multiple_choice') {
@@ -1038,6 +1044,7 @@ export class QuestionEditorPage implements OnInit {
     );
   }
   toggleSupportedMode(mode: QuestionSupportedMode, event: Event) {
+    if (this.isBattleOnlyType && mode === 'quiz') return;
     const checked = (event.target as HTMLInputElement).checked;
     const modes = new Set(this.form.controls.supportedModes.value);
     checked ? modes.add(mode) : modes.delete(mode);

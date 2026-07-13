@@ -504,6 +504,8 @@ function validateContentQuestion(question, publishing = false) {
   if (!CONTENT_SCOPES.includes(question?.scope)) errors.push('Scope must be chapter, book, multi_book, or whole_bible.');
   if (!Array.isArray(question?.supportedModes) || !question.supportedModes.length || question.supportedModes.some(mode => !CONTENT_SUPPORTED_MODES.includes(mode))) errors.push('Supported modes must include quiz, battle, or both.');
   if (Array.isArray(question?.supportedModes) && new Set(question.supportedModes).size !== question.supportedModes.length) errors.push('Supported modes must not contain duplicates.');
+  if (['pictionary','map_challenge','emoji_challenge'].includes(question?.questionType) &&
+      (question?.supportedModes?.length !== 1 || question.supportedModes[0] !== 'battle')) errors.push('Pictionary, Map Challenge, and Emoji Challenge must be battle-only.');
   if (!['en','es'].includes(question?.language)) errors.push('Invalid language.');
   if (typeof question?.prompt !== 'string' || question.prompt.trim().length < 10 || question.prompt.length > 500) errors.push('Prompt must contain 10–500 characters.');
   if (!question?.answerData?.type) errors.push('Answer configuration is required.');
