@@ -9,6 +9,7 @@ import {
 } from '../../components/menu-card.component';
 import { ActiveMatchesListComponent } from '../components/active-matches-list.component';
 import { MultiplayerService } from '../multiplayer.service';
+import { AdminAuthService } from '../../admin/admin-auth.service';
 
 @Component({
   selector: 'app-multiplayer-battle-page',
@@ -36,6 +37,10 @@ import { MultiplayerService } from '../multiplayer.service';
           <app-menu-card
             *ngFor="let card of battleCards"
             [config]="card"
+          ></app-menu-card>
+          <app-menu-card
+            *ngIf="isAdmin"
+            [config]="adminTestCard"
           ></app-menu-card>
           <app-active-matches-list></app-active-matches-list>
         </div>
@@ -68,6 +73,15 @@ import { MultiplayerService } from '../multiplayer.service';
 })
 export class MultiplayerBattlePage implements OnInit {
   currentUser: AppUser | null = null;
+  isAdmin = false;
+
+  readonly adminTestCard: MenuCardConfig = {
+    title: 'Admin Wheel Tester',
+    description: 'Test wheel spins and preview any category or question type.',
+    icon: '🧪',
+    color: 'purple',
+    onClick: () => this.navigateTo('/multiplayer/admin-test'),
+  };
 
   battleCards: MenuCardConfig[] = [
     {
@@ -96,12 +110,20 @@ export class MultiplayerBattlePage implements OnInit {
   constructor(
     private readonly authService: AuthService,
     private readonly multiplayerService: MultiplayerService,
+    private readonly adminAuthService: AdminAuthService,
     private readonly router: Router,
   ) {}
 
   ngOnInit(): void {
     this.authService.currentUser$.subscribe((user) => {
       this.currentUser = user;
+      if (user) {
+        void this.adminAuthService.ensureAdmin().then((isAdmin) => {
+          this.isAdmin = isAdmin;
+        });
+      } else {
+        this.isAdmin = false;
+      }
     });
   }
 

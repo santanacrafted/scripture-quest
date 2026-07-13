@@ -10,6 +10,11 @@ export const FIRESTORE_COLLECTIONS = {
   friendInvites: 'friendInvites',
 } as const;
 
+// Question documents use one master collection. Every document includes the
+// required `scope` eligibility value plus `passages` and derived `scopeTokens`
+// for exact chapter/book filtering. Multiplayer and daily modes do not filter
+// on `scope`; only user-configured quiz selections do.
+
 // Match document shape:
 // - id, playerIds, currentPlayerId, winnerId, status, createdAt, updatedAt,
 //   completedAt, categoryProgress, lastTurnSummary, inviteCode.

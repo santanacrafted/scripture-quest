@@ -490,11 +490,13 @@ function requireAdmin(handler) {
 const CONTENT_CATEGORIES = ['characters','scripture','stories','places','bible_knowledge'];
 const CONTENT_TYPES = ['multiple_choice','pictionary','verse_completion','reference_match','who_am_i','who_said_it','sequence','map_challenge','emoji_challenge','true_false','match_pairs','odd_one_out','what_happens_next','arrange_verse'];
 const CONTENT_DIFFICULTIES = ['easy','medium','hard','expert'];
+const CONTENT_SCOPES = ['chapter','book','multi_book','whole_bible'];
 function validateContentQuestion(question, publishing = false) {
   const errors = [];
   if (!CONTENT_CATEGORIES.includes(question?.category)) errors.push('Invalid category.');
   if (!CONTENT_TYPES.includes(question?.questionType)) errors.push('Invalid question type.');
   if (!CONTENT_DIFFICULTIES.includes(question?.difficulty)) errors.push('Invalid difficulty.');
+  if (!CONTENT_SCOPES.includes(question?.scope)) errors.push('Scope must be chapter, book, multi_book, or whole_bible.');
   if (!['en','es'].includes(question?.language)) errors.push('Invalid language.');
   if (typeof question?.prompt !== 'string' || question.prompt.trim().length < 10 || question.prompt.length > 500) errors.push('Prompt must contain 10–500 characters.');
   if (!question?.answerData?.type) errors.push('Answer configuration is required.');

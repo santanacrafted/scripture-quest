@@ -21,6 +21,7 @@ export type ContentQuestionType =
   | 'what_happens_next'
   | 'arrange_verse';
 export type ContentDifficulty = 'easy' | 'medium' | 'hard' | 'expert';
+export type QuestionScope = 'chapter' | 'book' | 'multi_book' | 'whole_bible';
 export type QuestionStatus =
   | 'draft'
   | 'review'
@@ -72,6 +73,7 @@ export interface StudioQuestion {
   category: ContentCategory;
   questionType: ContentQuestionType;
   difficulty: ContentDifficulty;
+  scope: QuestionScope;
   prompt: string;
   explanation?: string;
   scriptureReference?: string;
@@ -168,4 +170,10 @@ export const TYPES: [ContentQuestionType, string][] = [
   ['odd_one_out', 'Odd One Out'],
   ['what_happens_next', 'What Happens Next?'],
   ['arrange_verse', 'Arrange the Verse'],
+];
+export const QUESTION_SCOPES: [QuestionScope, string][] = [
+  ['chapter', 'Chapter'],
+  ['book', 'Book'],
+  ['multi_book', 'Multiple Books'],
+  ['whole_bible', 'Whole Bible'],
 ];

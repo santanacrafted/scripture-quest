@@ -7,6 +7,8 @@ import {
   QuestionAnswerData,
   StudioQuestion,
   TYPES,
+  QUESTION_SCOPES,
+  QuestionScope,
 } from './admin.models';
 import { parseBiblicalScope, scopeTokens } from './biblical-scope';
 export interface ImportIssue {
@@ -55,6 +57,7 @@ export class ImportService {
     const category = raw['category'] as ContentCategory,
       type = (source.questionType || raw['question_type'] || raw['questiontype']) as ContentQuestionType,
       difficulty = (source.difficulty || raw['difficulty']) as ContentDifficulty,
+      questionScope = (source.scope || raw['scope']) as QuestionScope,
       language = source.language || raw['language'],
       prompt = source.prompt || raw['question'] || raw['prompt'];
     if (!CATEGORIES.some((x) => x[0] === category))
@@ -69,6 +72,8 @@ export class ImportService {
       issues.push({ severity: 'error', message: 'Unsupported question type.' });
     if (!['easy', 'medium', 'hard', 'expert'].includes(difficulty))
       issues.push({ severity: 'error', message: 'Unsupported difficulty.' });
+    if (!QUESTION_SCOPES.some(([scope]) => scope === questionScope))
+      issues.push({ severity: 'error', message: 'Scope must be chapter, book, multi_book, or whole_bible.' });
     if (!['en', 'es'].includes(language))
       issues.push({ severity: 'error', message: 'Language must be en or es.' });
     if (!prompt || prompt.length < 10)
@@ -85,7 +90,7 @@ export class ImportService {
     let passages = nestedPassages;
     if (!passages && raw['scope_definition']) {
       try { passages = parseBiblicalScope(raw['scope_definition']); }
-      catch (error) { issues.push({ severity: 'error', message: error instanceof Error ? error.message : 'Invalid biblical scope.' }); }
+      catch (error) { issues.push({ severity: 'error', message: error instanceof Error ? error.message : 'Invalid biblical coverage.' }); }
     }
     if (!passages?.length) issues.push({ severity: 'error', message: 'Structured passages are required.' });
     const testament = (raw['testament'] || source?.testament || undefined) as 'old' | 'new' | undefined;
@@ -125,6 +130,7 @@ export class ImportService {
       category,
       questionType: type,
       difficulty,
+      scope: questionScope,
       prompt,
       explanation: source.explanation || raw['explanation'],
       scriptureReference,

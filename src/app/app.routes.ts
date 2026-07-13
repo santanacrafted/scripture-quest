@@ -15,6 +15,7 @@ import { QuizModePage } from './pages/quiz-mode.page';
 import { SettingsPage } from './settings/settings.page';
 import { MatchesPage } from './friend-battle/matches.page';
 import { ProfilePage } from './auth/profile.page';
+import { adminGuard } from './admin/admin.guard';
 
 export const routes: Routes = [
   { path: 'admin', loadChildren: () => import('./admin/admin.routes') },
@@ -63,6 +64,14 @@ export const routes: Routes = [
     path: 'multiplayer-battle',
     component: MultiplayerBattlePage,
     canActivate: [AuthGuard],
+  },
+  {
+    path: 'multiplayer/admin-test',
+    loadComponent: () =>
+      import('./multiplayer/pages/admin-wheel-test.page').then(
+        (module) => module.AdminWheelTestPage
+      ),
+    canActivate: [AuthGuard, adminGuard],
   },
   {
     path: 'battle-history',

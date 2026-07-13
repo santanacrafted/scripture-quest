@@ -4,6 +4,7 @@ import {
   MatchCategory,
   MULTIPLAYER_CATEGORIES,
   Question,
+  QuestionScope,
 } from './multiplayer.models';
 import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { firebaseDb } from '../firebase';
@@ -197,6 +198,8 @@ export class QuestionService {
         category: x[1],
         questionType: x[2],
         difficulty: x[3],
+        scope: 'chapter',
+        scopeTokens: ['bible'],
         text: x[4],
         choices: x[5],
         correctAnswer: x[6],
@@ -261,6 +264,8 @@ export class QuestionService {
       category,
       questionType: data.questionType,
       difficulty: data.difficulty,
+      scope: data.scope as QuestionScope,
+      scopeTokens: Array.isArray(data.scopeTokens) ? data.scopeTokens : [],
       text: data.prompt,
       choices,
       correctAnswer: correct,
@@ -282,6 +287,21 @@ export class QuestionService {
         this.questions.find((q) => q.category === category)!),
     };
   }
+  getRandomQuestionByCategoryAndType(category: MatchCategory, questionType: string) {
+    const pool = this.questions.filter(
+      (question) =>
+        question.category === category && question.questionType === questionType
+    );
+    const question = pool[Math.floor(Math.random() * pool.length)];
+    return question ? { ...question, choices: [...question.choices] } : undefined;
+  }
+  getQuestionTypesForCategory(category: MatchCategory) {
+    return [...new Set(
+      this.questions
+        .filter((question) => question.category === category)
+        .map((question) => question.questionType)
+    )];
+  }
   rollDifficulty(): Difficulty {
     const n = Math.random() * 100;
     return n < 40 ? 'easy' : n < 70 ? 'medium' : n < 95 ? 'hard' : 'expert';
@@ -289,4 +309,33 @@ export class QuestionService {
   getCategories() {
     return [...MULTIPLAYER_CATEGORIES];
   }
+
+  getQuestionsForQuiz(selection: QuizQuestionSelection) {
+    const allowedScopes = scopesForQuizSelection(selection);
+    return this.questions
+      .filter((question) => allowedScopes.includes(question.scope))
+      .filter((question) => matchesQuizCoverage(question.scopeTokens, selection))
+      .map((question) => ({ ...question, choices: [...question.choices] }));
+  }
+}
+
+export type QuizQuestionSelection =
+  | { kind: 'chapter'; bookId: string; chapter: number }
+  | { kind: 'book'; bookId: string }
+  | { kind: 'multi_book'; bookIds: string[] }
+  | { kind: 'whole_bible' };
+
+export function scopesForQuizSelection(selection: QuizQuestionSelection): QuestionScope[] {
+  if (selection.kind === 'chapter') return ['chapter'];
+  if (selection.kind === 'book') return ['chapter', 'book'];
+  if (selection.kind === 'multi_book') return ['chapter', 'book', 'multi_book'];
+  return ['chapter', 'book', 'multi_book', 'whole_bible'];
+}
+
+function matchesQuizCoverage(tokens: string[], selection: QuizQuestionSelection): boolean {
+  if (selection.kind === 'whole_bible') return true;
+  if (selection.kind === 'chapter') return tokens.includes(`chapter:${selection.bookId}:${selection.chapter}`);
+  const selectedBooks = new Set(selection.kind === 'book' ? [selection.bookId] : selection.bookIds);
+  const questionBooks = tokens.filter(token => token.startsWith('book:')).map(token => token.slice(5));
+  return questionBooks.length > 0 && questionBooks.every(book => selectedBooks.has(book));
 }

@@ -3,7 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { QuestionRepository } from './question.repository';
-import { CATEGORIES, StudioQuestion, TYPES } from './admin.models';
+import { CATEGORIES, QUESTION_SCOPES, StudioQuestion, TYPES } from './admin.models';
 @Component({
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
@@ -30,6 +30,9 @@ import { CATEGORIES, StudioQuestion, TYPES } from './admin.models';
         <option *ngFor="let type of types" [value]="type[0]">
           {{ type[1] }}
         </option>
+      </select><select [(ngModel)]="scope">
+        <option value="">All scopes</option>
+        <option *ngFor="let item of scopes" [value]="item[0]">{{ item[1] }}</option>
       </select>
     </section>
     <section class="selection-tools" *ngIf="filtered.length">
@@ -91,6 +94,7 @@ import { CATEGORIES, StudioQuestion, TYPES } from './admin.models';
             <th>Category</th>
             <th>Type</th>
             <th>Difficulty</th>
+            <th>Scope</th>
             <th>Prompt</th>
             <th>Reference</th>
             <th></th>
@@ -114,6 +118,7 @@ import { CATEGORIES, StudioQuestion, TYPES } from './admin.models';
             <td data-label="Difficulty">
               <b>{{ q.difficulty }}</b>
             </td>
+            <td data-label="Scope">{{ scopeName(q.scope) }}</td>
             <td class="prompt" data-label="Prompt">{{ q.prompt }}</td>
             <td data-label="Reference">{{ q.scriptureReference || '—' }}</td>
             <td class="action-cell">
@@ -162,7 +167,7 @@ import { CATEGORIES, StudioQuestion, TYPES } from './admin.models';
       }
       .filters {
         display: grid;
-        grid-template-columns: 2fr 1fr 1fr 1fr;
+        grid-template-columns: 2fr repeat(4, 1fr);
         gap: 0.7rem;
         margin: 1.5rem 0;
       }
@@ -414,9 +419,11 @@ export class AdminQuestionsPage implements OnInit {
   status = '';
   category = '';
   questionType = '';
+  scope = '';
   statuses = ['draft', 'review', 'published', 'rejected', 'archived'];
   categories = CATEGORIES;
   types = TYPES;
+  scopes = QUESTION_SCOPES;
   selected = new Set<string>();
   bulkBusy = false;
   notice = '';
@@ -430,10 +437,11 @@ export class AdminQuestionsPage implements OnInit {
     return this.questions.filter(
       (q) =>
         (!s ||
-          `${q.prompt} ${q.scriptureReference}`.toLowerCase().includes(s)) &&
+          `${q.prompt} ${q.scriptureReference} ${q.scope}`.toLowerCase().includes(s)) &&
         (!this.status || q.status === this.status) &&
         (!this.category || q.category === this.category) &&
-        (!this.questionType || q.questionType === this.questionType)
+        (!this.questionType || q.questionType === this.questionType) &&
+        (!this.scope || q.scope === this.scope)
     );
   }
   categoryName(v: string) {
@@ -441,6 +449,9 @@ export class AdminQuestionsPage implements OnInit {
   }
   typeName(v: string) {
     return this.types.find((x) => x[0] === v)?.[1] || v;
+  }
+  scopeName(v: string) {
+    return this.scopes.find((x) => x[0] === v)?.[1] || v;
   }
   toggle(id: string) {
     this.selected.has(id) ? this.selected.delete(id) : this.selected.add(id);

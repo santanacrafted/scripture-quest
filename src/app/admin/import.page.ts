@@ -61,12 +61,13 @@ import { QuestionRepository } from './question.repository';
     <aside>
       <b>Expected CSV columns</b
       ><code
-        >language, category, question_type, difficulty, question, option_a,
+        >language, category, question_type, difficulty, scope, question, option_a,
         option_b, option_c, option_d, correct_answer, accepted_answers,
         explanation, scripture_reference, testament, scope_definition, topics, tags,
         media_storage_path, media_download_url, media_mime_type, media_alt_text</code
       >
       <p>
+        <code>scope</code> is required and must be chapter, book, multi_book, or whole_bible.
         Use <code>scope_definition</code> like <code>Daniel:2,5; Revelation:2-3</code>.
         JSON imports must provide a structured <code>passages</code> array. Complex answers can use <code>answer_data_json</code>. Every imported
         pictionary question must have four multiple-choice options and image media with

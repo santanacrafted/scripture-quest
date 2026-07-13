@@ -27,6 +27,16 @@
       ]
     },
     {
+      "collectionGroup": "questions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "scope", "order": "ASCENDING" },
+        { "fieldPath": "scopeTokens", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
       "collectionGroup": "questionReports",
       "queryScope": "COLLECTION",
       "fields": [

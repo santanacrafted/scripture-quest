@@ -13,6 +13,7 @@ import {
   QuestionAnswerData,
   StudioQuestion,
   TYPES,
+  QUESTION_SCOPES,
 } from './admin.models';
 import { QuestionRepository } from './question.repository';
 import { MediaService } from './media.service';
@@ -75,6 +76,10 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
                   <option value="hard">🔴 Hard</option>
                   <option value="expert">👑 Expert</option>
                 </select></label
+              ><label
+                >Question scope<select formControlName="scope">
+                  <option *ngFor="let scope of scopes" [value]="scope[0]">{{ scope[1] }}</option>
+                </select></label
               >
             </div>
             <div class="grid">
@@ -110,7 +115,7 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
                   placeholder="Genesis 6–9" /></label
               >
             </div>
-            <label>Biblical quiz scope
+            <label>Biblical coverage
               <input formControlName="scopeDefinition" placeholder="Daniel:2,5; Revelation:2-3" />
               <small>Use semicolons between books, commas between chapters, and hyphens for ranges.</small>
             </label>
@@ -648,12 +653,14 @@ export class QuestionEditorPage implements OnInit {
     '';
   categories = CATEGORIES;
   types = TYPES;
+  scopes = QUESTION_SCOPES;
   letters = ['A', 'B', 'C', 'D'];
   form = this.fb.group({
     language: ['en', Validators.required],
     category: ['characters', Validators.required],
     questionType: ['multiple_choice', Validators.required],
     difficulty: ['easy', Validators.required],
+    scope: ['', Validators.required],
     prompt: ['', [Validators.required, Validators.minLength(10)]],
     scriptureReference: [''],
     scopeDefinition: [''],
@@ -874,6 +881,7 @@ export class QuestionEditorPage implements OnInit {
         category: v.category as any,
         questionType: v.questionType as any,
         difficulty: v.difficulty as any,
+        scope: v.scope as any,
         prompt: v.prompt || '',
         scriptureReference: v.scriptureReference || '',
         passages,
@@ -954,6 +962,7 @@ export class QuestionEditorPage implements OnInit {
     const v = this.form.getRawValue(),
       errors: string[] = [];
     if (!(v.prompt || '').trim()) errors.push('Question prompt is required.');
+    if (!v.scope) errors.push('Question scope is required.');
     else if ((v.prompt || '').trim().length < 10)
       errors.push('Question prompt must be at least 10 characters.');
     if (this.answerKind === 'multiple_choice') {
@@ -997,10 +1006,10 @@ export class QuestionEditorPage implements OnInit {
         'Scripture reference is required before review or publishing.'
       );
     if (forReviewOrPublish && !v.scopeDefinition?.trim())
-      errors.push('At least one structured biblical quiz scope is required before review or publishing.');
+      errors.push('At least one structured biblical coverage entry is required before review or publishing.');
     if (v.scopeDefinition) {
       try { parseBiblicalScope(v.scopeDefinition); }
-      catch (error) { errors.push(error instanceof Error ? error.message : 'Biblical quiz scope is invalid.'); }
+      catch (error) { errors.push(error instanceof Error ? error.message : 'Biblical coverage is invalid.'); }
     }
     const visual = ['pictionary', 'map_challenge'].includes(
       v.questionType || ''
