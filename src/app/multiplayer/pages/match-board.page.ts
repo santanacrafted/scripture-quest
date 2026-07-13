@@ -42,7 +42,14 @@ import { QuickMatchService } from '../quick-match.service';
       <p class="verse">
         “Let your light so shine before men...” <b>Matthew 5:16</b>
       </p>
-      <div class="wheel" [class.spinning]="spinning">
+      <div class="wheel-shell" [class.charging]="charging">
+      <div class="wheel-marker">▼</div>
+      <div class="wheel" [class.spinning]="spinning"
+        [style.transform]="'rotate(' + wheelRotation + 'deg)'"
+        [style.transition-duration.ms]="spinDuration"
+        (pointerdown)="startWheelCharge($event)"
+        (pointerup)="releaseWheel($event)"
+        (pointercancel)="cancelWheelCharge()">
         <button
           *ngFor="let c of categories; let i = index"
           [style.--i]="i"
@@ -51,6 +58,7 @@ import { QuickMatchService } from '../quick-match.service';
           <span>{{ icon(c) }}</span>
         </button>
         <div class="hub">✦</div>
+      </div>
       </div>
       <div class="result" *ngIf="match.selectedCategory && !spinning">
         <span>{{ icon(match.selectedCategory) }}</span
@@ -77,6 +85,14 @@ import { QuickMatchService } from '../quick-match.service';
       </div>
       <div class="lantern charged" [class.ready]="sparks(myId) === 3">
         <b>♜</b><span>{{ sparks(myId) }}/3</span>
+      </div>
+    </section>
+    <section *ngIf="match.phase === 'light_challenge' && isMyTurn && !transitionCategory && !spinning" class="light-choice">
+      <div class="choice-panel">
+        <div class="choice-lantern">🏮</div><p>Lantern charged</p><h2>Choose your Light Challenge</h2>
+        <h3>Claim a new Light</h3>
+        <div class="choice-grid"><button *ngFor="let category of availableCaptureCategories" (click)="chooseLight(category,'capture')"><span>{{icon(category)}}</span><b>{{label(category)}}</b><small>Claim Light</small></button></div>
+        <ng-container *ngIf="availableStealCategories.length"><h3>Challenge your opponent</h3><div class="choice-grid steal"><button *ngFor="let category of availableStealCategories" (click)="chooseLight(category,'steal')"><span>{{icon(category)}}</span><b>{{label(category)}}</b><small>Take their Light</small></button></div></ng-container>
       </div>
     </section>
     <section
@@ -236,15 +252,17 @@ import { QuickMatchService } from '../quick-match.service';
           #f0c94a 288deg
         );
         box-shadow: 0 0 0 5px #352711, 0 18px 45px #000b;
+        touch-action: none;
+        user-select: none;
+        transition-property: transform;
+        transition-timing-function: cubic-bezier(.12,.72,.18,1);
       }
       .wheel.spinning {
-        animation: spin 0.9s cubic-bezier(0.2, 0.8, 0.3, 1);
+        pointer-events: none;
       }
-      @keyframes spin {
-        to {
-          transform: rotate(720deg);
-        }
-      }
+      .wheel-shell { position:relative; }
+      .wheel-marker { position:absolute; z-index:4; left:50%; top:-1.45rem; transform:translateX(-50%); color:#ffe078; font-size:2.2rem; line-height:1; filter:drop-shadow(0 3px 2px #000); }
+      .wheel-shell.charging .wheel { filter:brightness(1.15); box-shadow:0 0 0 5px #352711,0 0 35px #ffd96899; }
       .wheel button {
         position: absolute;
         left: 50%;
@@ -319,6 +337,8 @@ import { QuickMatchService } from '../quick-match.service';
         background: radial-gradient(circle at center, color-mix(in srgb, var(--category-color) 78%, white 12%), color-mix(in srgb, var(--category-color) 48%, #06100e 52%) 48%, #06100e 100%);
         text-align: center;
       }
+      .light-choice{position:fixed;inset:0;z-index:19;display:grid;place-items:center;overflow:auto;padding:calc(env(safe-area-inset-top) + 1rem) 1rem calc(env(safe-area-inset-bottom) + 1rem);background:radial-gradient(circle at top,#315f55,#07100f 72%)}
+      .choice-panel{width:min(100%,36rem);padding:1rem;border:2px solid #e4bd5f;border-radius:16px;background:#0c1917ee;box-shadow:0 1rem 3rem #0009;text-align:center}.choice-lantern{font-size:3.2rem;filter:drop-shadow(0 0 18px #ffd850)}.choice-panel>p{margin:.2rem;color:#f6d46e;font-weight:900;letter-spacing:.15em;text-transform:uppercase}.choice-panel h2{margin:.25rem 0 1rem;font:900 1.8rem Georgia}.choice-panel h3{margin:1rem 0 .5rem;color:#cce1db;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase}.choice-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem}.choice-grid button{display:grid;min-height:6rem;place-items:center;padding:.55rem;border:2px solid #d8b15f;border-radius:11px;background:#20594f;color:#fff}.choice-grid button span{font-size:1.8rem}.choice-grid button b,.choice-grid button small{display:block}.choice-grid button small{color:#ffe082}.choice-grid.steal button{background:#682d2d;border-color:#ff9c7b}
       .category-glow { position:absolute; width:70vmin; aspect-ratio:1; border-radius:50%; background:var(--category-color); filter:blur(70px); opacity:.32; }
       .category-emblem { position:relative; display:grid; width:6rem; aspect-ratio:1; place-items:center; border:3px solid #ffe59a; border-radius:50%; background:#09201dd9; box-shadow:0 0 35px var(--category-color),inset 0 0 20px #fff2; font-size:3rem; }
       .question-transition>p { position:relative; margin:.8rem 0 .15rem; color:#ffe48c; font-weight:900; letter-spacing:.16em; text-transform:uppercase; }
@@ -346,6 +366,10 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     { label: 'Emoji Challenge', icon: '✨' }, { label: 'What Happens Next', icon: '➡️' },
   ];
   spinning = false;
+  charging = false;
+  wheelRotation = 0;
+  spinDuration = 0;
+  private chargeStartedAt = 0;
   transitionCategory: MatchCategory | null = null;
   displayedQuestionType = 'Mystery challenge';
   rouletteLanded = false;
@@ -391,17 +415,89 @@ export class MatchBoardPage implements OnInit, OnDestroy {
   }
   async act() {
     if (!this.match || !this.isMyTurn || this.spinning) return;
+    if (this.match.phase === 'spin') {
+      await this.spinWheelWithCharge(0.25);
+    } else this.router.navigate(['/multiplayer/play', this.match.id]);
+  }
+  startWheelCharge(event: PointerEvent) {
+    if (!this.match || !this.isMyTurn || this.spinning || this.match.phase !== 'spin') return;
+    event.preventDefault();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    this.charging = true;
+    this.chargeStartedAt = performance.now();
+  }
+  releaseWheel(event: PointerEvent) {
+    if (!this.charging) return;
+    event.preventDefault();
+    this.charging = false;
+    const charge = Math.min(1, Math.max(0.08, (performance.now() - this.chargeStartedAt) / 1500));
+    void this.spinWheelWithCharge(charge);
+  }
+  cancelWheelCharge() { this.charging = false; }
+  get availableCaptureCategories() {
+    const owned = this.match?.players[this.myId]?.lights || [];
+    return this.categories.filter(category => !owned.includes(category));
+  }
+  get availableStealCategories() {
+    const owned = this.match?.players[this.myId]?.lights || [];
+    const opponentLights = this.match?.players[this.opponentId]?.lights || [];
+    return this.categories.filter(category => opponentLights.includes(category) && !owned.includes(category));
+  }
+  async chooseLight(category: MatchCategory, action: 'capture' | 'steal') {
+    if (!this.match || this.spinning) return;
+    this.spinning = true;
+    const matchId = this.match.id;
+    this.transitionCategory = category;
+    this.rouletteLanded = false;
+    let typeIndex = 0;
+    const rouletteTimer = setInterval(() => {
+      this.displayedQuestionType = this.questionTypes[typeIndex++ % this.questionTypes.length].label;
+    }, 120);
+    try {
+      await this.service.chooseLightChallenge(matchId, category, action);
+      const [spinResult] = await Promise.all([
+        this.service.spinWheel(matchId, category),
+        new Promise(resolve => setTimeout(resolve, 2000)),
+      ]);
+      clearInterval(rouletteTimer);
+      this.displayedQuestionType = this.formatQuestionType(spinResult.question.questionType);
+      this.rouletteLanded = true;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      sessionStorage.setItem(`quick-match-answer:${matchId}:${spinResult.question.id}`, spinResult.correctAnswer);
+      await this.router.navigate(['/multiplayer/play', matchId]);
+    } finally {
+      clearInterval(rouletteTimer);
+      this.transitionCategory = null;
+      this.spinning = false;
+    }
+  }
+  private async spinWheelWithCharge(charge: number) {
+    if (!this.match || this.spinning) return;
     if (this.match.phase === 'spin' || this.match.phase === 'light_challenge') {
       this.spinning = true;
+      const fullTurns = 3 + Math.floor(charge * 6);
+      this.spinDuration = 1100 + Math.round(charge * 1400);
+      if (this.match.phase === 'light_challenge' && this.match.selectedCategory) {
+        const targetIndex = this.categories.indexOf(this.match.selectedCategory);
+        const targetRotation = (360 - (targetIndex * 72 + 36)) % 360;
+        const currentRotation = ((this.wheelRotation % 360) + 360) % 360;
+        const landingDelta = (targetRotation - currentRotation + 360) % 360;
+        this.wheelRotation += fullTurns * 360 + landingDelta;
+      } else {
+        this.wheelRotation += fullTurns * 360 + Math.floor(Math.random() * 360);
+      }
+      const normalizedRotation = ((this.wheelRotation % 360) + 360) % 360;
+      const pointerAngle = (360 - normalizedRotation) % 360;
+      const landedIndex = Math.min(this.categories.length - 1, Math.floor(pointerAngle / 72));
       const selectedCategory = this.match.phase === 'light_challenge' && this.match.selectedCategory
         ? this.match.selectedCategory
-        : this.categories[Math.floor(Math.random() * this.categories.length)];
+        : this.categories[landedIndex];
       const matchId = this.match.id;
       const questionRequest = this.service.spinWheel(matchId, selectedCategory);
       let rouletteTimer: ReturnType<typeof setInterval> | undefined;
       try {
         // Let the category wheel finish and visibly land before covering it.
-        await new Promise(resolve => setTimeout(resolve, 900));
+        await new Promise(resolve => setTimeout(resolve, this.spinDuration));
         this.transitionCategory = selectedCategory;
         this.rouletteLanded = false;
         let typeIndex = 0;
@@ -423,7 +519,7 @@ export class MatchBoardPage implements OnInit, OnDestroy {
         this.transitionCategory = null;
         this.spinning = false;
       }
-    } else this.router.navigate(['/multiplayer/play', this.match.id]);
+    }
   }
   name(id: string) {
     return this.match?.players[id]?.displayName || this.match?.players[id]?.username || 'Explorer';

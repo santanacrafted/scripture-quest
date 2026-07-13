@@ -41,6 +41,8 @@ export interface FirestoreQuickMatch {
   completionReason?: 'forfeit' | 'lights';
   forfeitedBy?: string;
   winnerId?: string | null;
+  lightChallengeAction?: 'capture' | 'steal' | null;
+  lightChallengeOpponentId?: string | null;
   roundNumber: number;
   totalRounds: number;
   playerIds: string[];

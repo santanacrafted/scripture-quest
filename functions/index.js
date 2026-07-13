@@ -334,6 +334,37 @@ exports.spinMatchWheel = functions.https.onCall(requireAuth(async (data, context
   });
 }));
 
+exports.chooseLightChallenge = functions.https.onCall(requireAuth(async (data, context) => {
+  const matchId = requireString(data?.matchId, 'matchId');
+  const category = requireString(data?.category, 'category');
+  const action = data?.action;
+  if (!['capture', 'steal'].includes(action) || !['characters', 'scripture', 'stories', 'places', 'knowledge'].includes(category)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid Light Challenge choice.');
+  }
+  const matchRef = db.collection(MATCH_COLLECTION).doc(matchId);
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(matchRef);
+    if (!snapshot.exists) throw new functions.https.HttpsError('not-found', 'Match not found.');
+    const match = snapshot.data();
+    assertMatchTurn(match, context.auth.uid, 'light_challenge');
+    const owned = match.players?.[context.auth.uid]?.lights || [];
+    if (owned.includes(category)) throw new functions.https.HttpsError('failed-precondition', 'You already own this Light.');
+    const opponentId = match.playerIds.find((id) => id !== context.auth.uid);
+    const opponentLights = opponentId ? match.players?.[opponentId]?.lights || [] : [];
+    if (action === 'steal' && (!opponentId || !opponentLights.includes(category))) {
+      throw new functions.https.HttpsError('failed-precondition', 'The opponent does not own that Light.');
+    }
+    transaction.update(matchRef, {
+      selectedCategory: category,
+      lightChallengeAction: action,
+      lightChallengeOpponentId: action === 'steal' ? opponentId : null,
+      lastTurnSummary: action === 'steal' ? `Challenge for the opponent's ${category} Light!` : `Challenge to capture the ${category} Light!`,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return { matchId, category, action };
+  });
+}));
+
 exports.submitAnswer = functions.https.onCall(requireAuth(async (data, context) => {
   const matchId = requireString(data?.matchId, 'matchId');
   const answer = requireString(data?.answer, 'answer');
@@ -362,8 +393,22 @@ exports.submitAnswer = functions.https.onCall(requireAuth(async (data, context) 
       updates[`players.${context.auth.uid}.sparks`] = 0;
       if (correct) {
         const lights = Array.isArray(match.players?.[context.auth.uid]?.lights) ? match.players[context.auth.uid].lights : [];
-        updates[`players.${context.auth.uid}.lights`] = [...new Set([...lights, match.selectedCategory])];
+        const capturedLights = [...new Set([...lights, match.selectedCategory])];
+        updates[`players.${context.auth.uid}.lights`] = capturedLights;
+        if (match.lightChallengeAction === 'steal' && match.lightChallengeOpponentId) {
+          const opponentLights = match.players?.[match.lightChallengeOpponentId]?.lights || [];
+          updates[`players.${match.lightChallengeOpponentId}.lights`] = opponentLights.filter((light) => light !== match.selectedCategory);
+        }
         updates.lastTurnSummary = `You captured the ${match.selectedCategory} Light!`;
+        if (capturedLights.length >= 5) {
+          updates.status = 'completed';
+          updates.phase = 'complete';
+          updates.currentTurnPlayerId = null;
+          updates.winnerId = context.auth.uid;
+          updates.completionReason = 'lights';
+          updates.completedAt = FieldValue.serverTimestamp();
+          updates.lastTurnSummary = 'All five Lights captured. Victory!';
+        }
       } else if (opponentId) {
         updates.currentTurnPlayerId = opponentId;
         updates.lastTurnSummary = 'The Light Challenge was missed. The turn passes.';
@@ -377,7 +422,9 @@ exports.submitAnswer = functions.https.onCall(requireAuth(async (data, context) 
       updates[`players.${context.auth.uid}.sparks`] = nextSparks;
       if (nextSparks === 3) {
         updates.phase = 'light_challenge';
-        updates.selectedCategory = match.selectedCategory;
+        updates.selectedCategory = null;
+        updates.lightChallengeAction = null;
+        updates.lightChallengeOpponentId = null;
         updates.lastTurnSummary = 'Lantern charged! Take the Light Challenge.';
       }
     } else if (opponentId) {

@@ -124,6 +124,10 @@ export class QuickMatchService {
     return this.callFunction('spinMatchWheel', { matchId, category }) as unknown as Promise<import('./quick-match.models').MatchSpinResult>;
   }
 
+  async chooseLightChallenge(matchId: string, category: string, action: 'capture' | 'steal'): Promise<void> {
+    await this.callFunction('chooseLightChallenge', { matchId, category, action });
+  }
+
   async submitAnswer(matchId: string, answer: string): Promise<import('./quick-match.models').MatchAnswerResult> {
     return this.callFunction('submitAnswer', { matchId, answer }) as unknown as Promise<import('./quick-match.models').MatchAnswerResult>;
   }
@@ -195,7 +199,7 @@ export class QuickMatchService {
   }
 
   private async callFunction(
-    name: 'joinQuickMatchQueue' | 'attemptQuickMatch' | 'cancelQuickMatch' | 'deleteMatchForTesting' | 'forfeitMatch' | 'spinMatchWheel' | 'submitAnswer',
+    name: 'joinQuickMatchQueue' | 'attemptQuickMatch' | 'cancelQuickMatch' | 'deleteMatchForTesting' | 'forfeitMatch' | 'spinMatchWheel' | 'chooseLightChallenge' | 'submitAnswer',
     payload: Record<string, unknown> = {},
   ): Promise<QuickMatchFunctionResult> {
     const callable = httpsCallable<Record<string, unknown>, QuickMatchFunctionResult>(firebaseFunctions, name);
