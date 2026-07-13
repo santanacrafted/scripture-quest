@@ -16,6 +16,7 @@ import {
 } from './admin.models';
 import { QuestionRepository } from './question.repository';
 import { MediaService } from './media.service';
+import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical-scope';
 @Component({
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
@@ -107,10 +108,12 @@ import { MediaService } from './media.service';
                 >Scripture reference<input
                   formControlName="scriptureReference"
                   placeholder="Genesis 6–9" /></label
-              ><label
-                >Book<input formControlName="book" placeholder="Genesis"
-              /></label>
+              >
             </div>
+            <label>Biblical quiz scope
+              <input formControlName="scopeDefinition" placeholder="Daniel:2,5; Revelation:2-3" />
+              <small>Use semicolons between books, commas between chapters, and hyphens for ranges.</small>
+            </label>
             <label
               >Explanation<textarea
                 formControlName="explanation"
@@ -652,8 +655,8 @@ export class QuestionEditorPage implements OnInit {
     difficulty: ['easy', Validators.required],
     prompt: ['', [Validators.required, Validators.minLength(10)]],
     scriptureReference: [''],
+    scopeDefinition: [''],
     explanation: [''],
-    book: [''],
     testament: [''],
     tags: [''],
     translationGroupId: [''],
@@ -685,6 +688,7 @@ export class QuestionEditorPage implements OnInit {
         this.media = q.media;
         this.form.patchValue({
           ...q,
+          scopeDefinition: formatBiblicalScope(q.passages || []),
           tags: q.tags.join(','),
           primaryAnswer: this.primary(q.answerData),
           acceptedAnswers:
@@ -848,6 +852,7 @@ export class QuestionEditorPage implements OnInit {
     this.messageKind = 'info';
     try {
       const v = this.form.getRawValue();
+      const passages = parseBiblicalScope(v.scopeDefinition || '');
       const payload = {
         translationGroupId: v.translationGroupId || undefined,
         contentConceptId: v.contentConceptId || undefined,
@@ -870,8 +875,9 @@ export class QuestionEditorPage implements OnInit {
         difficulty: v.difficulty as any,
         prompt: v.prompt || '',
         scriptureReference: v.scriptureReference || '',
+        passages,
+        scopeTokens: scopeTokens(passages, (v.testament || undefined) as 'old' | 'new' | undefined),
         explanation: v.explanation || '',
-        book: v.book || '',
         testament: (v.testament || undefined) as any,
         tags: (v.tags || '')
           .split(',')
@@ -989,6 +995,12 @@ export class QuestionEditorPage implements OnInit {
       errors.push(
         'Scripture reference is required before review or publishing.'
       );
+    if (forReviewOrPublish && !v.scopeDefinition?.trim())
+      errors.push('At least one structured biblical quiz scope is required before review or publishing.');
+    if (v.scopeDefinition) {
+      try { parseBiblicalScope(v.scopeDefinition); }
+      catch (error) { errors.push(error instanceof Error ? error.message : 'Biblical quiz scope is invalid.'); }
+    }
     const visual = [
       'pictionary',
       'image_reveal',

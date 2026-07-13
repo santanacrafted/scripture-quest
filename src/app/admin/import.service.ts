@@ -8,6 +8,7 @@ import {
   StudioQuestion,
   TYPES,
 } from './admin.models';
+import { parseBiblicalScope, scopeTokens } from './biblical-scope';
 export interface ImportIssue {
   severity: 'error' | 'warning';
   message: string;
@@ -43,6 +44,7 @@ export class ImportService {
     }
   }
   private normalize(source: any, row: number): ImportRow {
+    const nestedPassages = Array.isArray(source?.passages) ? source.passages : null;
     const raw = Object.fromEntries(
       Object.entries(source).map(([k, v]) => [
         k.trim().toLowerCase(),
@@ -51,11 +53,10 @@ export class ImportService {
     );
     const issues: ImportIssue[] = [];
     const category = raw['category'] as ContentCategory,
-      type = (raw['question_type'] ||
-        raw['questiontype']) as ContentQuestionType,
-      difficulty = raw['difficulty'] as ContentDifficulty,
-      language = raw['language'],
-      prompt = raw['question'] || raw['prompt'];
+      type = (source.questionType || raw['question_type'] || raw['questiontype']) as ContentQuestionType,
+      difficulty = (source.difficulty || raw['difficulty']) as ContentDifficulty,
+      language = source.language || raw['language'],
+      prompt = source.prompt || raw['question'] || raw['prompt'];
     if (!CATEGORIES.some((x) => x[0] === category))
       issues.push({
         severity: 'error',
@@ -75,27 +76,36 @@ export class ImportService {
         severity: 'error',
         message: 'Prompt must be at least 10 characters.',
       });
-    if (!raw['scripture_reference'])
+    const scriptureReference = source.scriptureReference || raw['scripture_reference'];
+    if (!scriptureReference)
       issues.push({
-        severity: 'warning',
+        severity: 'error',
         message: 'Scripture reference is missing.',
       });
-    const answer = this.answer(raw, type, issues);
+    let passages = nestedPassages;
+    if (!passages && raw['scope_definition']) {
+      try { passages = parseBiblicalScope(raw['scope_definition']); }
+      catch (error) { issues.push({ severity: 'error', message: error instanceof Error ? error.message : 'Invalid biblical scope.' }); }
+    }
+    if (!passages?.length) issues.push({ severity: 'error', message: 'Structured passages are required.' });
+    const testament = (raw['testament'] || source?.testament || undefined) as 'old' | 'new' | undefined;
+    const answer = source.answerData?.type ? source.answerData as QuestionAnswerData : this.answer(raw, type, issues);
     const question: Partial<StudioQuestion> = {
-      externalId: raw['external_id'] || undefined,
-      translationGroupId: raw['translation_group_id'] || undefined,
-      contentConceptId: raw['content_concept_id'] || undefined,
+      externalId: source.externalId || raw['external_id'] || undefined,
+      translationGroupId: source.translationGroupId || raw['translation_group_id'] || undefined,
+      contentConceptId: source.contentConceptId || raw['content_concept_id'] || undefined,
       language: language as 'en' | 'es',
       category,
       questionType: type,
       difficulty,
       prompt,
-      explanation: raw['explanation'],
-      scriptureReference: raw['scripture_reference'],
-      testament: (raw['testament'] || undefined) as any,
-      book: raw['book'],
-      topics: this.list(raw['topics']),
-      tags: this.list(raw['tags']),
+      explanation: source.explanation || raw['explanation'],
+      scriptureReference,
+      testament,
+      passages: passages || [],
+      scopeTokens: scopeTokens(passages || [], testament),
+      topics: Array.isArray(source.topics) ? source.topics : this.list(raw['topics']),
+      tags: Array.isArray(source.tags) ? source.tags : this.list(raw['tags']),
       answerData: answer,
       status: 'draft',
       isActive: false,

@@ -57,6 +57,14 @@ export type QuestionAnswerData =
   | { type: 'match_pairs'; pairs: Pair[] }
   | { type: 'arrange_verse'; segments: OrderedItem[] }
   | { type: 'map'; correctRegionId: string };
+export interface BiblicalPassage {
+  bookId: string;
+  bookName: string;
+  chapterStart?: number;
+  chapterEnd?: number;
+  verseStart?: number;
+  verseEnd?: number;
+}
 export interface StudioQuestion {
   id: string;
   externalId?: string;
@@ -69,6 +77,8 @@ export interface StudioQuestion {
   prompt: string;
   explanation?: string;
   scriptureReference?: string;
+  passages?: BiblicalPassage[];
+  scopeTokens?: string[];
   answerData: QuestionAnswerData;
   media?: {
     storagePath: string;
@@ -81,7 +91,6 @@ export interface StudioQuestion {
     revealGrid?: { rows: number; columns: number };
   };
   testament?: 'old' | 'new';
-  book?: string;
   topics: string[];
   tags: string[];
   status: QuestionStatus;

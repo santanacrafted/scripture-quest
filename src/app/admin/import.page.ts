@@ -64,10 +64,11 @@ import { QuestionRepository } from './question.repository';
       ><code
         >language, category, question_type, difficulty, question, option_a,
         option_b, option_c, option_d, correct_answer, accepted_answers,
-        explanation, scripture_reference, testament, book, topics, tags</code
+        explanation, scripture_reference, testament, scope_definition, topics, tags</code
       >
       <p>
-        Complex answers can use <code>answer_data_json</code>. Every imported
+        Use <code>scope_definition</code> like <code>Daniel:2,5; Revelation:2-3</code>.
+        JSON imports must provide a structured <code>passages</code> array. Complex answers can use <code>answer_data_json</code>. Every imported
         row is saved as an inactive Draft and must be reviewed before
         publishing.
       </p>

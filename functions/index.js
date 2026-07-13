@@ -24,6 +24,7 @@ const MAX_PENDING_ASYNC_MATCHES = 10;
 const MAX_SIMULTANEOUS_QUICK_MATCHES = 5;
 const CANDIDATE_LIMIT = 30;
 const EXPIRE_BATCH_LIMIT = 100;
+const QUESTION_HISTORY_LIMIT = 500;
 // Bootstrap allowlist only. Access to admin data is always enforced with the
 // signed Firebase ID token's `admin` custom claim.
 const CONTENT_ADMIN_EMAILS = new Set([
@@ -313,7 +314,13 @@ exports.spinMatchWheel = functions.https.onCall(requireAuth(async (data, context
   const questions = await db.collection('questions').where('category', '==', category).limit(100).get();
   const playableQuestions = questions.docs.filter((doc) => doc.get('status') === 'published' && doc.get('isActive') === true);
   if (!playableQuestions.length) throw new functions.https.HttpsError('failed-precondition', 'No published questions are available for this category.');
-  const questionSnapshot = playableQuestions[Math.floor(Math.random() * playableQuestions.length)];
+  const historySnapshot = await db.collection(USER_COLLECTION).doc(context.auth.uid)
+    .collection('questionHistory').orderBy('seenAt', 'desc').limit(QUESTION_HISTORY_LIMIT).get();
+  const seenAtByQuestion = new Map(historySnapshot.docs.map((doc) => [doc.id, doc.get('seenAt')?.toMillis?.() || 0]));
+  const unseenQuestions = playableQuestions.filter((doc) => !seenAtByQuestion.has(doc.id));
+  const questionSnapshot = unseenQuestions.length
+    ? unseenQuestions[Math.floor(Math.random() * unseenQuestions.length)]
+    : [...playableQuestions].sort((left, right) => (seenAtByQuestion.get(left.id) || 0) - (seenAtByQuestion.get(right.id) || 0))[0];
   const question = questionSnapshot.data();
   const publicQuestion = publicMatchQuestion(questionSnapshot.id, question, playableQuestions);
 
@@ -330,6 +337,11 @@ exports.spinMatchWheel = functions.https.onCall(requireAuth(async (data, context
       currentQuestion: { ...publicQuestion, kind: match.phase === 'light_challenge' ? 'light_challenge' : 'standard' },
       lastTurnSummary: match.phase === 'light_challenge' ? 'Answer correctly to capture the Light!' : `The wheel landed on ${category}.`, updatedAt: FieldValue.serverTimestamp(),
     });
+    transaction.set(
+      db.collection(USER_COLLECTION).doc(context.auth.uid).collection('questionHistory').doc(questionSnapshot.id),
+      { questionId: questionSnapshot.id, category, seenAt: FieldValue.serverTimestamp(), matchId },
+      { merge: true },
+    );
     return { matchId, category, question: publicQuestion, correctAnswer: correctAnswerForQuestion(question) };
   });
 }));
@@ -493,13 +505,33 @@ function validateContentQuestion(question, publishing = false) {
     if (!(question.answerData?.correctOptionIds || []).every(id => options.some(option => option.id === id))) errors.push('Correct option is invalid.');
   }
   if (publishing && !String(question?.scriptureReference || '').trim()) errors.push('Scripture reference is required to publish.');
+  if (publishing && (!Array.isArray(question?.passages) || !question.passages.length)) errors.push('At least one structured biblical passage is required to publish.');
   if (publishing && ['pictionary','image_reveal','zoom_challenge','map_challenge'].includes(question?.questionType) && !question?.media?.storagePath) errors.push('This question type requires media.');
   if (publishing && question?.media?.storagePath && !String(question.media.altText || '').trim()) errors.push('Media alt text is required.');
+  if (question?.passages && !Array.isArray(question.passages)) errors.push('Passages must be an array.');
+  for (const passage of question?.passages || []) {
+    if (!String(passage.bookId || '').trim() || !String(passage.bookName || '').trim()) errors.push('Every passage needs a canonical book ID and name.');
+    if (passage.chapterStart != null && (!Number.isInteger(passage.chapterStart) || passage.chapterStart < 1)) errors.push('Passage chapterStart is invalid.');
+    if (passage.chapterEnd != null && (!Number.isInteger(passage.chapterEnd) || passage.chapterEnd < passage.chapterStart)) errors.push('Passage chapterEnd is invalid.');
+  }
   return errors;
 }
 
+function withNormalizedScope(question) {
+  const passages = Array.isArray(question.passages) ? question.passages : [];
+  const tokens = new Set(['bible']);
+  if (['old', 'new'].includes(question.testament)) tokens.add(`testament:${question.testament}`);
+  for (const passage of passages) {
+    tokens.add(`book:${passage.bookId}`);
+    if (Number.isInteger(passage.chapterStart) && Number.isInteger(passage.chapterEnd)) {
+      for (let chapter = passage.chapterStart; chapter <= passage.chapterEnd; chapter++) tokens.add(`chapter:${passage.bookId}:${chapter}`);
+    }
+  }
+  return { ...question, passages, scopeTokens: [...tokens] };
+}
+
 exports.saveContentQuestion = functions.https.onCall(requireAdmin(async (data, context) => {
-  const question = data?.question || {};
+  const question = withNormalizedScope(data?.question || {});
   const id = typeof data?.questionId === 'string' && data.questionId ? data.questionId : db.collection('questions').doc().id;
   const errors = validateContentQuestion(question, false);
   if (errors.length) throw new functions.https.HttpsError('invalid-argument', errors.join(' '), { errors });
@@ -512,7 +544,7 @@ exports.saveContentQuestion = functions.https.onCall(requireAdmin(async (data, c
 exports.publishQuestion = functions.https.onCall(requireAdmin(async (data, context) => {
   const id = requireString(data?.questionId, 'questionId'), ref = db.collection('questions').doc(id), snapshot = await ref.get();
   if (!snapshot.exists) throw new functions.https.HttpsError('not-found','Question not found.');
-  const question = {...snapshot.data(),...(data?.question || {})}, errors = validateContentQuestion(question, true);
+  const question = withNormalizedScope({...snapshot.data(),...(data?.question || {})}), errors = validateContentQuestion(question, true);
   if (errors.length) throw new functions.https.HttpsError('failed-precondition', errors.join(' '), { errors });
   if (question.externalId) { const duplicate = await db.collection('questions').where('externalId','==',question.externalId).limit(2).get(); if (duplicate.docs.some(doc => doc.id !== id)) throw new functions.https.HttpsError('already-exists','External ID is already in use.'); }
   await ref.set({...question,status:'published',isActive:true,publishedAt:FieldValue.serverTimestamp(),publishedBy:context.auth.uid,updatedAt:FieldValue.serverTimestamp(),updatedBy:context.auth.uid},{merge:true});
@@ -527,7 +559,7 @@ exports.bulkImportQuestions = functions.https.onCall(requireAdmin(async (data, c
   if (failures.length) throw new functions.https.HttpsError('invalid-argument','Import contains invalid questions.',{failures});
   const externalIds = questions.map(q=>q.externalId).filter(Boolean); if (new Set(externalIds).size !== externalIds.length) throw new functions.https.HttpsError('already-exists','Import contains duplicate external IDs.');
   let imported=0;
-  for(let offset=0;offset<questions.length;offset+=400){const batch=db.batch();questions.slice(offset,offset+400).forEach(question=>{const ref=db.collection('questions').doc();batch.set(ref,{...question,id:ref.id,status:'draft',isActive:false,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp(),createdBy:context.auth.uid,updatedBy:context.auth.uid});});await batch.commit();imported+=Math.min(400,questions.length-offset);}
+  for(let offset=0;offset<questions.length;offset+=400){const batch=db.batch();questions.slice(offset,offset+400).forEach(question=>{const ref=db.collection('questions').doc();batch.set(ref,{...withNormalizedScope(question),id:ref.id,status:'draft',isActive:false,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp(),createdBy:context.auth.uid,updatedBy:context.auth.uid});});await batch.commit();imported+=Math.min(400,questions.length-offset);}
   functions.logger.info('content_questions_imported',{actorId:context.auth.uid,count:imported});return{imported};
 }));
 
