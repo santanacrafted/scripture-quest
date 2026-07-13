@@ -312,7 +312,11 @@ exports.spinMatchWheel = functions.https.onCall(requireAuth(async (data, context
     category = matchBeforeSpin.get('selectedCategory') === 'knowledge' ? 'bible_knowledge' : matchBeforeSpin.get('selectedCategory');
   }
   const questions = await db.collection('questions').where('category', '==', category).limit(100).get();
-  const playableQuestions = questions.docs.filter((doc) => doc.get('status') === 'published' && doc.get('isActive') === true);
+  const playableQuestions = questions.docs.filter((doc) =>
+    doc.get('status') === 'published' &&
+    doc.get('isActive') === true &&
+    (doc.get('supportedModes') || []).includes('battle')
+  );
   if (!playableQuestions.length) throw new functions.https.HttpsError('failed-precondition', 'No published questions are available for this category.');
   const historySnapshot = await db.collection(USER_COLLECTION).doc(context.auth.uid)
     .collection('questionHistory').orderBy('seenAt', 'desc').limit(QUESTION_HISTORY_LIMIT).get();
@@ -491,12 +495,15 @@ const CONTENT_CATEGORIES = ['characters','scripture','stories','places','bible_k
 const CONTENT_TYPES = ['multiple_choice','pictionary','verse_completion','reference_match','who_am_i','who_said_it','sequence','map_challenge','emoji_challenge','true_false','match_pairs','odd_one_out','what_happens_next','arrange_verse'];
 const CONTENT_DIFFICULTIES = ['easy','medium','hard','expert'];
 const CONTENT_SCOPES = ['chapter','book','multi_book','whole_bible'];
+const CONTENT_SUPPORTED_MODES = ['quiz','battle'];
 function validateContentQuestion(question, publishing = false) {
   const errors = [];
   if (!CONTENT_CATEGORIES.includes(question?.category)) errors.push('Invalid category.');
   if (!CONTENT_TYPES.includes(question?.questionType)) errors.push('Invalid question type.');
   if (!CONTENT_DIFFICULTIES.includes(question?.difficulty)) errors.push('Invalid difficulty.');
   if (!CONTENT_SCOPES.includes(question?.scope)) errors.push('Scope must be chapter, book, multi_book, or whole_bible.');
+  if (!Array.isArray(question?.supportedModes) || !question.supportedModes.length || question.supportedModes.some(mode => !CONTENT_SUPPORTED_MODES.includes(mode))) errors.push('Supported modes must include quiz, battle, or both.');
+  if (Array.isArray(question?.supportedModes) && new Set(question.supportedModes).size !== question.supportedModes.length) errors.push('Supported modes must not contain duplicates.');
   if (!['en','es'].includes(question?.language)) errors.push('Invalid language.');
   if (typeof question?.prompt !== 'string' || question.prompt.trim().length < 10 || question.prompt.length > 500) errors.push('Prompt must contain 10–500 characters.');
   if (!question?.answerData?.type) errors.push('Answer configuration is required.');

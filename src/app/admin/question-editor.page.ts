@@ -14,6 +14,8 @@ import {
   StudioQuestion,
   TYPES,
   QUESTION_SCOPES,
+  QUESTION_SUPPORTED_MODES,
+  QuestionSupportedMode,
 } from './admin.models';
 import { QuestionRepository } from './question.repository';
 import { MediaService } from './media.service';
@@ -82,6 +84,10 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
                 </select></label
               >
             </div>
+            <fieldset class="mode-options">
+              <legend>Available in</legend>
+              <label *ngFor="let mode of supportedModeOptions"><input type="checkbox" [checked]="form.value.supportedModes?.includes(mode[0])" (change)="toggleSupportedMode(mode[0], $event)" />{{ mode[1] }}</label>
+            </fieldset>
             <div class="grid">
               <label
                 >Translation group
@@ -654,6 +660,7 @@ export class QuestionEditorPage implements OnInit {
   categories = CATEGORIES;
   types = TYPES;
   scopes = QUESTION_SCOPES;
+  supportedModeOptions = QUESTION_SUPPORTED_MODES;
   letters = ['A', 'B', 'C', 'D'];
   form = this.fb.group({
     language: ['en', Validators.required],
@@ -661,6 +668,7 @@ export class QuestionEditorPage implements OnInit {
     questionType: ['multiple_choice', Validators.required],
     difficulty: ['easy', Validators.required],
     scope: ['', Validators.required],
+    supportedModes: this.fb.nonNullable.control<QuestionSupportedMode[]>(['quiz', 'battle'], Validators.required),
     prompt: ['', [Validators.required, Validators.minLength(10)]],
     scriptureReference: [''],
     scopeDefinition: [''],
@@ -882,6 +890,7 @@ export class QuestionEditorPage implements OnInit {
         questionType: v.questionType as any,
         difficulty: v.difficulty as any,
         scope: v.scope as any,
+        supportedModes: v.supportedModes,
         prompt: v.prompt || '',
         scriptureReference: v.scriptureReference || '',
         passages,
@@ -963,6 +972,7 @@ export class QuestionEditorPage implements OnInit {
       errors: string[] = [];
     if (!(v.prompt || '').trim()) errors.push('Question prompt is required.');
     if (!v.scope) errors.push('Question scope is required.');
+    if (!v.supportedModes.length) errors.push('Select at least one supported mode.');
     else if ((v.prompt || '').trim().length < 10)
       errors.push('Question prompt must be at least 10 characters.');
     if (this.answerKind === 'multiple_choice') {
@@ -1026,6 +1036,13 @@ export class QuestionEditorPage implements OnInit {
     return (
       this.types.find((x) => x[0] === type)?.[1] || type.replaceAll('_', ' ')
     );
+  }
+  toggleSupportedMode(mode: QuestionSupportedMode, event: Event) {
+    const checked = (event.target as HTMLInputElement).checked;
+    const modes = new Set(this.form.controls.supportedModes.value);
+    checked ? modes.add(mode) : modes.delete(mode);
+    this.form.controls.supportedModes.setValue([...modes]);
+    this.form.controls.supportedModes.markAsDirty();
   }
   private firebaseErrors(error: any): string[] {
     const details = error?.details || error?.customData?.details;

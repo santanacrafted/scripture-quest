@@ -3,7 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { QuestionRepository } from './question.repository';
-import { CATEGORIES, QUESTION_SCOPES, StudioQuestion, TYPES } from './admin.models';
+import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, TYPES } from './admin.models';
 @Component({
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
@@ -33,6 +33,9 @@ import { CATEGORIES, QUESTION_SCOPES, StudioQuestion, TYPES } from './admin.mode
       </select><select [(ngModel)]="scope">
         <option value="">All scopes</option>
         <option *ngFor="let item of scopes" [value]="item[0]">{{ item[1] }}</option>
+      </select><select [(ngModel)]="supportedMode">
+        <option value="">All modes</option>
+        <option *ngFor="let item of supportedModes" [value]="item[0]">{{ item[1] }}</option>
       </select>
     </section>
     <section class="selection-tools" *ngIf="filtered.length">
@@ -95,6 +98,7 @@ import { CATEGORIES, QUESTION_SCOPES, StudioQuestion, TYPES } from './admin.mode
             <th>Type</th>
             <th>Difficulty</th>
             <th>Scope</th>
+            <th>Modes</th>
             <th>Prompt</th>
             <th>Reference</th>
             <th></th>
@@ -119,6 +123,7 @@ import { CATEGORIES, QUESTION_SCOPES, StudioQuestion, TYPES } from './admin.mode
               <b>{{ q.difficulty }}</b>
             </td>
             <td data-label="Scope">{{ scopeName(q.scope) }}</td>
+            <td data-label="Modes">{{ modeNames(q.supportedModes) }}</td>
             <td class="prompt" data-label="Prompt">{{ q.prompt }}</td>
             <td data-label="Reference">{{ q.scriptureReference || '—' }}</td>
             <td class="action-cell">
@@ -167,7 +172,7 @@ import { CATEGORIES, QUESTION_SCOPES, StudioQuestion, TYPES } from './admin.mode
       }
       .filters {
         display: grid;
-        grid-template-columns: 2fr repeat(4, 1fr);
+        grid-template-columns: 2fr repeat(5, 1fr);
         gap: 0.7rem;
         margin: 1.5rem 0;
       }
@@ -420,10 +425,12 @@ export class AdminQuestionsPage implements OnInit {
   category = '';
   questionType = '';
   scope = '';
+  supportedMode = '';
   statuses = ['draft', 'review', 'published', 'rejected', 'archived'];
   categories = CATEGORIES;
   types = TYPES;
   scopes = QUESTION_SCOPES;
+  supportedModes = QUESTION_SUPPORTED_MODES;
   selected = new Set<string>();
   bulkBusy = false;
   notice = '';
@@ -437,11 +444,12 @@ export class AdminQuestionsPage implements OnInit {
     return this.questions.filter(
       (q) =>
         (!s ||
-          `${q.prompt} ${q.scriptureReference} ${q.scope}`.toLowerCase().includes(s)) &&
+          `${q.prompt} ${q.scriptureReference} ${q.scope} ${q.supportedModes.join(' ')}`.toLowerCase().includes(s)) &&
         (!this.status || q.status === this.status) &&
         (!this.category || q.category === this.category) &&
         (!this.questionType || q.questionType === this.questionType) &&
-        (!this.scope || q.scope === this.scope)
+        (!this.scope || q.scope === this.scope) &&
+        (!this.supportedMode || q.supportedModes.includes(this.supportedMode as any))
     );
   }
   categoryName(v: string) {
@@ -452,6 +460,9 @@ export class AdminQuestionsPage implements OnInit {
   }
   scopeName(v: string) {
     return this.scopes.find((x) => x[0] === v)?.[1] || v;
+  }
+  modeNames(modes: string[]) {
+    return modes.map(mode => this.supportedModes.find(x => x[0] === mode)?.[1] || mode).join(', ');
   }
   toggle(id: string) {
     this.selected.has(id) ? this.selected.delete(id) : this.selected.add(id);

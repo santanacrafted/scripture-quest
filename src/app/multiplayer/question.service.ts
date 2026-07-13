@@ -199,6 +199,7 @@ export class QuestionService {
         questionType: x[2],
         difficulty: x[3],
         scope: 'chapter',
+        supportedModes: ['quiz', 'battle'],
         scopeTokens: ['bible'],
         text: x[4],
         choices: x[5],
@@ -265,6 +266,7 @@ export class QuestionService {
       questionType: data.questionType,
       difficulty: data.difficulty,
       scope: data.scope as QuestionScope,
+      supportedModes: data.supportedModes,
       scopeTokens: Array.isArray(data.scopeTokens) ? data.scopeTokens : [],
       text: data.prompt,
       choices,
@@ -280,6 +282,7 @@ export class QuestionService {
     const pool = this.questions.filter(
       (q) =>
         q.category === category &&
+        q.supportedModes.includes('battle') &&
         (!hardOnly || ['hard', 'expert'].includes(q.difficulty))
     );
     return {
@@ -290,7 +293,9 @@ export class QuestionService {
   getRandomQuestionByCategoryAndType(category: MatchCategory, questionType: string) {
     const pool = this.questions.filter(
       (question) =>
-        question.category === category && question.questionType === questionType
+        question.category === category &&
+        question.questionType === questionType &&
+        question.supportedModes.includes('battle')
     );
     const question = pool[Math.floor(Math.random() * pool.length)];
     return question ? { ...question, choices: [...question.choices] } : undefined;
@@ -298,7 +303,7 @@ export class QuestionService {
   getQuestionTypesForCategory(category: MatchCategory) {
     return [...new Set(
       this.questions
-        .filter((question) => question.category === category)
+        .filter((question) => question.category === category && question.supportedModes.includes('battle'))
         .map((question) => question.questionType)
     )];
   }
@@ -314,6 +319,7 @@ export class QuestionService {
     const allowedScopes = scopesForQuizSelection(selection);
     return this.questions
       .filter((question) => allowedScopes.includes(question.scope))
+      .filter((question) => question.supportedModes.includes('quiz'))
       .filter((question) => matchesQuizCoverage(question.scopeTokens, selection))
       .map((question) => ({ ...question, choices: [...question.choices] }));
   }

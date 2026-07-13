@@ -9,6 +9,8 @@ import {
   TYPES,
   QUESTION_SCOPES,
   QuestionScope,
+  QUESTION_SUPPORTED_MODES,
+  QuestionSupportedMode,
 } from './admin.models';
 import { parseBiblicalScope, scopeTokens } from './biblical-scope';
 export interface ImportIssue {
@@ -58,6 +60,9 @@ export class ImportService {
       type = (source.questionType || raw['question_type'] || raw['questiontype']) as ContentQuestionType,
       difficulty = (source.difficulty || raw['difficulty']) as ContentDifficulty,
       questionScope = (source.scope || raw['scope']) as QuestionScope,
+      supportedModes = (Array.isArray(source.supportedModes)
+        ? source.supportedModes
+        : this.list(raw['supported_modes'] || raw['supportedmodes'])) as QuestionSupportedMode[],
       language = source.language || raw['language'],
       prompt = source.prompt || raw['question'] || raw['prompt'];
     if (!CATEGORIES.some((x) => x[0] === category))
@@ -74,6 +79,10 @@ export class ImportService {
       issues.push({ severity: 'error', message: 'Unsupported difficulty.' });
     if (!QUESTION_SCOPES.some(([scope]) => scope === questionScope))
       issues.push({ severity: 'error', message: 'Scope must be chapter, book, multi_book, or whole_bible.' });
+    if (!supportedModes.length || supportedModes.some(mode => !QUESTION_SUPPORTED_MODES.some(([allowed]) => allowed === mode)))
+      issues.push({ severity: 'error', message: 'Supported modes must include quiz, battle, or both.' });
+    if (new Set(supportedModes).size !== supportedModes.length)
+      issues.push({ severity: 'error', message: 'Supported modes must not contain duplicates.' });
     if (!['en', 'es'].includes(language))
       issues.push({ severity: 'error', message: 'Language must be en or es.' });
     if (!prompt || prompt.length < 10)
@@ -131,6 +140,7 @@ export class ImportService {
       questionType: type,
       difficulty,
       scope: questionScope,
+      supportedModes,
       prompt,
       explanation: source.explanation || raw['explanation'],
       scriptureReference,

@@ -12,8 +12,9 @@ export const FIRESTORE_COLLECTIONS = {
 
 // Question documents use one master collection. Every document includes the
 // required `scope` eligibility value plus `passages` and derived `scopeTokens`
-// for exact chapter/book filtering. Multiplayer and daily modes do not filter
-// on `scope`; only user-configured quiz selections do.
+// for exact chapter/book filtering. `supportedModes` controls whether the
+// question can be served to quiz, battle/game modes, or both. Multiplayer and
+// daily modes do not filter on `scope`; only user-configured quizzes do.
 
 // Match document shape:
 // - id, playerIds, currentPlayerId, winnerId, status, createdAt, updatedAt,

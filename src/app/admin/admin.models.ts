@@ -22,6 +22,7 @@ export type ContentQuestionType =
   | 'arrange_verse';
 export type ContentDifficulty = 'easy' | 'medium' | 'hard' | 'expert';
 export type QuestionScope = 'chapter' | 'book' | 'multi_book' | 'whole_bible';
+export type QuestionSupportedMode = 'quiz' | 'battle';
 export type QuestionStatus =
   | 'draft'
   | 'review'
@@ -74,6 +75,7 @@ export interface StudioQuestion {
   questionType: ContentQuestionType;
   difficulty: ContentDifficulty;
   scope: QuestionScope;
+  supportedModes: QuestionSupportedMode[];
   prompt: string;
   explanation?: string;
   scriptureReference?: string;
@@ -176,4 +178,8 @@ export const QUESTION_SCOPES: [QuestionScope, string][] = [
   ['book', 'Book'],
   ['multi_book', 'Multiple Books'],
   ['whole_bible', 'Whole Bible'],
+];
+export const QUESTION_SUPPORTED_MODES: [QuestionSupportedMode, string][] = [
+  ['quiz', 'Quiz Mode'],
+  ['battle', 'Battle / Game Mode'],
 ];
