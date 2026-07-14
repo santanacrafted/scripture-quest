@@ -57,19 +57,22 @@ import { QuickMatchService } from '../quick-match.service';
     :host {
       display: block;
       min-height: 100vh;
-      background: #070a12;
-      color: #fff8df;
+      background: #e7e4dc;
+      color: #17140d;
     }
 
     .search-page {
       position: relative;
       display: flex;
       min-height: 100svh;
-      align-items: flex-end;
+      align-items: center;
       justify-content: center;
       overflow: hidden;
       isolation: isolate;
-      padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+      padding: max(1.5rem, env(safe-area-inset-top)) 1.25rem max(1.5rem, env(safe-area-inset-bottom));
+      background:
+        radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.72) 0, rgba(255, 255, 255, 0) 42%),
+        #e7e4dc;
     }
 
     .background-image {
@@ -93,32 +96,27 @@ import { QuickMatchService } from '../quick-match.service';
     }
 
     .search-panel {
-      width: min(100%, 28rem);
-      border: 2px solid #d8b15f;
-      border-radius: 8px;
-      background: rgba(14, 17, 18, 0.78);
-      box-shadow:
-        inset 0 0 0 2px rgba(36, 24, 10, 0.8),
-        inset 0 0 0 4px rgba(255, 232, 166, 0.12),
-        0 1rem 2.6rem rgba(0, 0, 0, 0.42);
-      padding: 1.1rem;
+      width: min(100%, 31rem);
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      padding: clamp(0.5rem, 4vw, 1.5rem);
       text-align: center;
-      backdrop-filter: blur(6px);
     }
 
     .compass {
       position: relative;
       display: grid;
-      width: 4.4rem;
-      height: 4.4rem;
-      margin: 0 auto 0.85rem;
+      width: 5.5rem;
+      height: 5.5rem;
+      margin: 0 auto 1.1rem;
       place-items: center;
       border: 2px solid #d8b15f;
       border-radius: 999px;
-      background: rgba(34, 66, 61, 0.9);
+      background: linear-gradient(145deg, #2b6f62, #173f3d);
       box-shadow:
-        inset 0 0 0 3px rgba(7, 10, 18, 0.54),
-        0 0.8rem 1.5rem rgba(0, 0, 0, 0.34);
+        inset 0 0 0 4px #123633,
+        0 0.8rem 1.5rem rgba(56, 49, 34, 0.2);
     }
 
     .compass span {
@@ -133,59 +131,57 @@ import { QuickMatchService } from '../quick-match.service';
     }
 
     .eyebrow {
-      margin: 0 0 0.35rem;
-      color: #f5d36e;
-      font-size: 0.78rem;
+      margin: 0 0 0.55rem;
+      color: #766425;
+      font-size: 0.82rem;
       font-weight: 900;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55);
     }
 
     h1 {
       margin: 0;
-      color: #fff;
+      color: #17140d;
       font-family: Georgia, 'Times New Roman', serif;
-      font-size: clamp(2rem, 9vw, 3rem);
-      line-height: 1;
+      font-size: clamp(2.2rem, 9vw, 3.4rem);
+      line-height: 0.98;
       text-transform: uppercase;
-      text-shadow:
-        0 2px 0 rgba(32, 21, 7, 0.72),
-        0 0.25rem 1rem rgba(0, 0, 0, 0.58);
+      text-wrap: balance;
     }
 
     .message {
       min-height: 2.6rem;
-      margin: 0.75rem auto 0;
-      color: rgba(255, 255, 255, 0.92);
-      font-weight: 800;
+      margin: 1rem auto 0;
+      color: #625d51;
+      font-size: 1.05rem;
+      font-weight: 700;
       line-height: 1.35;
     }
 
     .timer {
       display: grid;
-      margin: 1rem auto;
-      width: 8.5rem;
-      min-height: 5.1rem;
+      margin: 1.6rem auto;
+      width: 9.5rem;
+      min-height: 5.5rem;
       place-items: center;
       border: 2px solid #d8b15f;
-      border-radius: 8px;
-      background: linear-gradient(180deg, rgba(39, 91, 80, 0.93), rgba(28, 70, 74, 0.93));
+      border-radius: 14px;
+      background: rgba(250, 248, 242, 0.9);
       box-shadow:
-        inset 0 0 0 2px rgba(22, 27, 33, 0.62),
-        inset 0 0 0 4px rgba(255, 232, 166, 0.08),
-        0 0.65rem 1.4rem rgba(0, 0, 0, 0.34);
+        inset 0 0 0 3px rgba(118, 100, 37, 0.14),
+        0 0.65rem 1.4rem rgba(56, 49, 34, 0.13);
       padding: 0.4rem;
     }
 
     .timer span {
-      color: #fff;
-      font-size: 2rem;
+      color: #174a43;
+      font-size: 2.25rem;
       font-weight: 900;
       line-height: 1;
     }
 
     .timer small {
-      color: #fff6d5;
+      color: #766425;
       font-size: 0.68rem;
       font-weight: 900;
       text-transform: uppercase;
@@ -201,14 +197,15 @@ import { QuickMatchService } from '../quick-match.service';
     }
 
     .notice {
-      border: 2px solid rgba(216, 177, 95, 0.68);
-      background: rgba(34, 66, 61, 0.82);
+      border: 1px solid #9bbab0;
+      background: #dce9e3;
+      color: #174a43;
     }
 
     .error {
-      border: 2px solid rgba(255, 193, 122, 0.7);
-      background: rgba(83, 27, 27, 0.8);
-      color: #ffe1d6;
+      border: 1px solid #d6a196;
+      background: #f5dfda;
+      color: #8f3028;
     }
 
     .actions {
@@ -233,9 +230,9 @@ import { QuickMatchService } from '../quick-match.service';
     }
 
     .cancel-button {
-      border: 2px solid #d8b15f;
-      background: rgba(14, 17, 18, 0.76);
-      color: #fff8df;
+      border: 2px solid #8f825f;
+      background: transparent;
+      color: #332e23;
     }
 
     button:disabled {
@@ -258,17 +255,6 @@ import { QuickMatchService } from '../quick-match.service';
         justify-content: flex-end;
         padding: 2rem clamp(2rem, 8vw, 6rem);
       }
-    }
-
-    /* Share the same warm canvas used by the Multiplayer landing page. */
-    :host {
-      background: #e7e4dc;
-    }
-
-    .search-page {
-      align-items: center;
-      justify-content: center;
-      background: #e7e4dc;
     }
 
     .background-image,

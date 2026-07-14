@@ -70,9 +70,6 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
           (pointerdown)="$event.stopPropagation(); startWheelCharge($event)"
           (pointerup)="$event.stopPropagation(); releaseWheel($event)"
           (pointercancel)="cancelWheelCharge()"
-          (touchstart)="$event.stopPropagation(); startWheelTouch($event)"
-          (touchend)="$event.stopPropagation(); releaseWheelTouch($event)"
-          (touchcancel)="cancelWheelCharge()"
           (keydown.enter)="act()" (keydown.space)="$event.preventDefault(); act()"><span>✦</span><b>{{isMyTurn?'SPIN':'WAIT'}}</b></button>
       </div>
       </div>
@@ -127,6 +124,9 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
         color: #fff;
       }
       .board {
+        box-sizing: border-box;
+        width: 100%;
+        overflow-x: hidden;
         min-height: 100svh;
         background: #e7e4dc;
         display: grid;
@@ -155,6 +155,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
         font-size: 1.7rem;
       }
       .player {
+        box-sizing: border-box;
         max-width: 38rem;
         width: 100%;
         margin: 0.6rem auto;
@@ -234,6 +235,8 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
         text-align: center;
       }
       .wheel {
+        box-sizing: border-box;
+        max-width: 100%;
         position: relative;
         width: min(86vw, 36rem);
         aspect-ratio: 1;
@@ -289,6 +292,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
         background: radial-gradient(circle,#315f56,#102d29 70%);
         color: #ffe078;
         box-shadow:0 0 0 4px #173f39,0 5px 14px #0008,inset 0 0 10px #fff3;
+        touch-action:none;
       }
       .hub span,.hub b { display:block; line-height:1; }
       .hub span { font-size:1.45rem; }
@@ -353,6 +357,8 @@ export class MatchBoardPage implements OnInit, OnDestroy {
   spinDuration = 0;
   private chargeStartedAt = 0;
   private chargeTimer?: ReturnType<typeof setTimeout>;
+  private chargeFrame?: number;
+  private maxChargeHaptic = false;
   transitionCategory: MatchCategory | null = null;
   displayedQuestionType = 'Mystery challenge';
   rouletteLanded = false;
@@ -397,6 +403,7 @@ export class MatchBoardPage implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.subscription?.unsubscribe();
     clearTimeout(this.chargeTimer);
+    cancelAnimationFrame(this.chargeFrame || 0);
     clearTimeout(this.syncFallbackTimer);
     if (this.charging) void Haptics.selectionEnd();
   }
@@ -437,23 +444,17 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     this.beginWheelCharge();
   }
-  startWheelTouch(event: TouchEvent) {
-    event.preventDefault();
-    this.beginWheelCharge();
-  }
   private beginWheelCharge() {
     if (!this.match || !this.isMyTurn || this.spinning || this.charging || this.match.phase !== 'spin') return;
     this.charging = true;
     this.chargePercent = 0;
+    this.maxChargeHaptic = false;
     this.chargeStartedAt = performance.now();
     void Haptics.selectionStart();
+    this.runChargeMeter();
     this.runChargePulse();
   }
   releaseWheel(event: PointerEvent) {
-    event.preventDefault();
-    this.finishWheelCharge();
-  }
-  releaseWheelTouch(event: TouchEvent) {
     event.preventDefault();
     this.finishWheelCharge();
   }
@@ -461,22 +462,31 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     if (!this.charging) return;
     this.charging = false;
     clearTimeout(this.chargeTimer);
+    cancelAnimationFrame(this.chargeFrame || 0);
     void Haptics.selectionEnd();
     const charge = Math.min(1, Math.max(0.08, (performance.now() - this.chargeStartedAt) / 1500));
+    if (charge >= 1 && !this.maxChargeHaptic) this.reachMaxCharge();
     void this.spinWheelWithCharge(charge);
   }
-  cancelWheelCharge() { this.charging = false; clearTimeout(this.chargeTimer); this.chargePercent = 0; void Haptics.selectionEnd(); }
+  cancelWheelCharge() { this.charging = false; clearTimeout(this.chargeTimer); cancelAnimationFrame(this.chargeFrame || 0); this.chargePercent = 0; void Haptics.selectionEnd(); }
+  private runChargeMeter() {
+    if (!this.charging) return;
+    this.chargePercent = Math.min(100, Math.round((performance.now() - this.chargeStartedAt) / 15));
+    if (this.chargePercent >= 100 && !this.maxChargeHaptic) this.reachMaxCharge();
+    if (this.chargePercent < 100) this.chargeFrame = requestAnimationFrame(() => this.runChargeMeter());
+  }
+  private reachMaxCharge() {
+    this.chargePercent = 100;
+    this.maxChargeHaptic = true;
+    void Haptics.vibrate({ duration: 180 }).catch(() => navigator.vibrate?.([45,35,65]));
+  }
   private runChargePulse() {
     if (!this.charging) return;
     const charge = Math.min(1, (performance.now() - this.chargeStartedAt) / 1500);
-    this.chargePercent = Math.round(charge * 100);
     const style = charge > .72 ? ImpactStyle.Heavy : charge > .35 ? ImpactStyle.Medium : ImpactStyle.Light;
     void Haptics.selectionChanged();
     void Haptics.impact({ style }).catch(() => navigator.vibrate?.(charge > .72 ? 35 : 18));
-    if (charge >= 1) {
-      void Haptics.vibrate({ duration: 180 }).catch(() => navigator.vibrate?.([45, 35, 65]));
-      return;
-    }
+    if (charge >= 1) return;
     const nextPulseMs = Math.round(210 - charge * 145);
     this.chargeTimer = setTimeout(() => this.runChargePulse(), nextPulseMs);
   }
