@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { QuestionRepository } from './question.repository';
 import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, TYPES } from './admin.models';
 @Component({
@@ -17,25 +17,36 @@ import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, 
     <section class="filters">
       <input
         [(ngModel)]="search"
+        (ngModelChange)="filtersChanged()"
         placeholder="Search prompts or references…"
-      /><select [(ngModel)]="status">
+      /><select [(ngModel)]="status" (ngModelChange)="filtersChanged()">
         <option value="">All statuses</option>
         <option *ngFor="let s of statuses">{{ s }}</option></select
-      ><select [(ngModel)]="category">
+      ><select [(ngModel)]="active" (ngModelChange)="filtersChanged()">
+        <option value="">All activity</option>
+        <option value="active">Active</option>
+        <option value="inactive">Not active</option>
+      </select><select [(ngModel)]="category" (ngModelChange)="filtersChanged()">
         <option value="">All categories</option>
         <option *ngFor="let c of categories" [value]="c[0]">{{ c[1] }}</option>
       </select
-      ><select [(ngModel)]="questionType">
+      ><select [(ngModel)]="questionType" (ngModelChange)="filtersChanged()">
         <option value="">All question types</option>
         <option *ngFor="let type of types" [value]="type[0]">
           {{ type[1] }}
         </option>
-      </select><select [(ngModel)]="scope">
+      </select><select [(ngModel)]="scope" (ngModelChange)="filtersChanged()">
         <option value="">All scopes</option>
         <option *ngFor="let item of scopes" [value]="item[0]">{{ item[1] }}</option>
-      </select><select [(ngModel)]="supportedMode">
+      </select><select [(ngModel)]="supportedMode" (ngModelChange)="filtersChanged()">
         <option value="">All modes</option>
         <option *ngFor="let item of supportedModes" [value]="item[0]">{{ item[1] }}</option>
+      </select><select [(ngModel)]="book" (ngModelChange)="bookChanged()">
+        <option value="">All books</option>
+        <option *ngFor="let item of books" [value]="item.id">{{ item.name }}</option>
+      </select><select [(ngModel)]="chapter" (ngModelChange)="filtersChanged()" [disabled]="!book">
+        <option value="">All chapters</option>
+        <option *ngFor="let item of chapters" [value]="item">Chapter {{ item }}</option>
       </select>
     </section>
     <section class="selection-tools" *ngIf="filtered.length">
@@ -58,6 +69,7 @@ import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, 
       >
         Clear selection
       </button>
+      <button type="button" (click)="downloadJson()">Download filtered JSON</button>
     </section>
     <section class="bulk" *ngIf="selected.size">
       <b>{{ selected.size }} selected</b>
@@ -127,7 +139,7 @@ import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, 
             <td class="prompt" data-label="Prompt">{{ q.prompt }}</td>
             <td data-label="Reference">{{ q.scriptureReference || '—' }}</td>
             <td class="action-cell">
-              <a [routerLink]="['/admin/questions', q.id]">Edit</a>
+              <a [routerLink]="['/admin/questions', q.id]" [queryParams]="filterParams">Edit</a>
               <button class="delete" (click)="deleteOne(q)">Delete</button>
             </td>
           </tr>
@@ -172,7 +184,7 @@ import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, 
       }
       .filters {
         display: grid;
-        grid-template-columns: 2fr repeat(5, 1fr);
+        grid-template-columns: 2fr repeat(4, 1fr);
         gap: 0.7rem;
         margin: 1.5rem 0;
       }
@@ -422,10 +434,13 @@ export class AdminQuestionsPage implements OnInit {
   questions: StudioQuestion[] = [];
   search = '';
   status = '';
+  active = '';
   category = '';
   questionType = '';
   scope = '';
   supportedMode = '';
+  book = '';
+  chapter = '';
   statuses = ['draft', 'review', 'published', 'rejected', 'archived'];
   categories = CATEGORIES;
   types = TYPES;
@@ -435,10 +450,41 @@ export class AdminQuestionsPage implements OnInit {
   bulkBusy = false;
   notice = '';
   noticeKind: 'success' | 'error' = 'success';
-  constructor(private repo: QuestionRepository) {}
+  constructor(private repo: QuestionRepository, private route: ActivatedRoute, private router: Router) {}
   async ngOnInit() {
+    const params = this.route.snapshot.queryParamMap;
+    this.search = params.get('search') || '';
+    this.status = params.get('status') || '';
+    this.active = params.get('active') || '';
+    this.category = params.get('category') || '';
+    this.questionType = params.get('type') || '';
+    this.scope = params.get('scope') || '';
+    this.supportedMode = params.get('mode') || '';
+    this.book = params.get('book') || '';
+    this.chapter = params.get('chapter') || '';
     this.questions = await this.repo.list();
   }
+  get books() {
+    const values = new Map<string, string>();
+    this.questions.flatMap(q => q.passages || []).forEach(p => values.set(p.bookId, p.bookName));
+    return [...values].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }
+  get chapters() {
+    const values = new Set<number>();
+    this.questions.flatMap(q => q.passages || []).filter(p => p.bookId === this.book).forEach(p => {
+      if (p.chapterStart && p.chapterEnd) for (let n = p.chapterStart; n <= p.chapterEnd; n++) values.add(n);
+    });
+    return [...values].sort((a, b) => a - b);
+  }
+  get filterParams() {
+    return { search: this.search || null, status: this.status || null, active: this.active || null,
+      category: this.category || null, type: this.questionType || null, scope: this.scope || null,
+      mode: this.supportedMode || null, book: this.book || null, chapter: this.chapter || null };
+  }
+  filtersChanged() {
+    void this.router.navigate([], { relativeTo: this.route, queryParams: this.filterParams, replaceUrl: true });
+  }
+  bookChanged() { this.chapter = ''; this.filtersChanged(); }
   get filtered() {
     const s = this.search.toLowerCase();
     return this.questions.filter(
@@ -446,11 +492,25 @@ export class AdminQuestionsPage implements OnInit {
         (!s ||
           `${q.prompt} ${q.scriptureReference} ${q.scope} ${q.supportedModes.join(' ')}`.toLowerCase().includes(s)) &&
         (!this.status || q.status === this.status) &&
+        (!this.active || q.isActive === (this.active === 'active')) &&
         (!this.category || q.category === this.category) &&
         (!this.questionType || q.questionType === this.questionType) &&
         (!this.scope || q.scope === this.scope) &&
-        (!this.supportedMode || q.supportedModes.includes(this.supportedMode as any))
+        (!this.supportedMode || q.supportedModes.includes(this.supportedMode as any)) &&
+        (!this.book || (q.passages || []).some(p => p.bookId === this.book && (!this.chapter ||
+          (!!p.chapterStart && !!p.chapterEnd && +this.chapter >= p.chapterStart && +this.chapter <= p.chapterEnd))))
     );
+  }
+  downloadJson() {
+    const clean = this.filtered.map(q => JSON.parse(JSON.stringify(q, (_key, value) =>
+      value && typeof value === 'object' && typeof value.toDate === 'function' ? value.toDate().toISOString() : value
+    )));
+    const blob = new Blob([JSON.stringify(clean, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url;
+    link.download = `scripture-quest-questions-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
   categoryName(v: string) {
     return this.categories.find((x) => x[0] === v)?.[1] || v;

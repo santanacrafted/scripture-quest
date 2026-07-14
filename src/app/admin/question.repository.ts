@@ -145,8 +145,20 @@ export class QuestionRepository {
     // Keep each callable request comfortably below payload and Firestore batch
     // limits while allowing the source dataset itself to be any size.
     for (let offset = 0; offset < rows.length; offset += 400) {
-      const result = await callable({ questions: rows.slice(offset, offset + 400), publish });
-      imported += result.data.imported;
+      try {
+        const result = await callable({ questions: rows.slice(offset, offset + 400), publish });
+        imported += result.data.imported;
+      } catch (error: any) {
+        const code = String(error?.code || '');
+        // Older deployed backends may not have bulkImportQuestions yet. Use
+        // the established single-question callables until Functions is updated.
+        if (!code.endsWith('not-found') && !code.endsWith('unimplemented')) throw error;
+        for (const question of rows.slice(offset, offset + 400)) {
+          const id = await this.save({ ...question, status: publish ? 'published' : 'draft', isActive: publish });
+          if (publish) await this.publish(id, question);
+          imported++;
+        }
+      }
     }
     return imported;
   }

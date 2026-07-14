@@ -7,6 +7,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import {
   CATEGORIES,
   ContentQuestionType,
@@ -22,8 +23,9 @@ import { MediaService } from './media.service';
 import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical-scope';
 @Component({
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, DragDropModule],
   template: `<header>
+      <button class="back-button" type="button" (click)="backToQuestions()" aria-label="Back to questions">‹</button>
       <div>
         <p>{{ id ? 'EDIT QUESTION' : 'NEW QUESTION' }}</p>
         <h1>{{ id ? 'Edit question' : 'Create question' }}</h1>
@@ -35,7 +37,12 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
         *ngIf="message"
         >{{ message }}</span
       >
+      <button class="game-preview-button" type="button" (click)="openGamePreview()">▶ Preview in game</button>
     </header>
+    <nav class="editor-modes" aria-label="Editor mode">
+      <button type="button" [class.active]="editorMode === 'form'" (click)="setEditorMode('form')">Form mode</button>
+      <button type="button" [class.active]="editorMode === 'json'" (click)="setEditorMode('json')">JSON mode</button>
+    </nav>
     <div class="error-panel" *ngIf="validationErrors.length" role="alert">
       <b
         >Please fix {{ validationErrors.length }}
@@ -46,7 +53,13 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
       </ul>
     </div>
     <form [formGroup]="form" (ngSubmit)="save(false)">
-      <div class="workspace">
+      <section class="json-editor" *ngIf="editorMode === 'json'">
+        <label>Question JSON
+          <textarea rows="32" spellcheck="false" [value]="jsonText" (input)="jsonText = $any($event.target).value"></textarea>
+        </label>
+        <p>Edit the question document here. System fields such as the ID and audit timestamps are managed automatically.</p>
+      </section>
+      <div class="workspace" *ngIf="editorMode === 'form'">
         <div class="fields">
           <section>
             <h2>Basic information</h2>
@@ -296,7 +309,43 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
           {{ busyAction === 'publish' ? 'Publishing…' : 'Publish' }}
         </button>
       </footer>
-    </form>`,
+    </form>
+    <div class="game-preview" *ngIf="showGamePreview" role="dialog" aria-modal="true" aria-label="Game question preview">
+      <button class="preview-close" type="button" (click)="showGamePreview = false" aria-label="Close preview">×</button>
+      <div class="preview-header"><span>{{ categoryLabel }}</span><b>PREVIEW MODE</b><span>∞ NO TIMER</span></div>
+      <section class="preview-card">
+        <p>{{ (form.value.questionType || '').replaceAll('_', ' ') }}</p>
+        <h1>{{ form.value.prompt || 'Your question prompt appears here.' }}</h1>
+        <figure *ngIf="previewType === 'pictionary'" class="preview-image">
+          <img *ngIf="media" [src]="media.downloadUrl" [alt]="form.value.mediaAltText || media.altText" />
+          <span *ngIf="!media">Image unavailable</span>
+        </figure>
+        <div *ngIf="previewType === 'sequence'" class="preview-sequence" cdkDropList [cdkDropListData]="previewSequence" [cdkDropListDisabled]="previewAnswered" (cdkDropListDropped)="previewDrop($event)">
+          <div *ngFor="let item of previewSequence; let i = index" cdkDrag [cdkDragStartDelay]="360" [class.result-correct]="previewAnswered && previewCorrect" [class.result-wrong]="previewAnswered && !previewCorrect"><span>{{ i + 1 }}</span><b>{{ item }}</b><i>⠿</i></div>
+        </div>
+        <div *ngIf="previewType === 'match_pairs'" class="preview-pairs">
+          <div><strong>Choose from this side</strong><button type="button" *ngFor="let item of previewPairLeft" [class.selected]="previewSelectedLeft === item" [class.connected]="!!previewPairMatches[item]" (click)="previewChooseLeft(item)">{{ item }} <i>{{ previewPairMatches[item] ? '✓' : '○' }}</i></button></div>
+          <div><strong>Match with this side</strong><button type="button" *ngFor="let item of previewPairRight" [class.selected]="previewSelectedRight === item" [class.connected]="previewRightConnected(item)" (click)="previewChooseRight(item)">{{ item }} <i>{{ previewRightConnected(item) ? '✓' : '○' }}</i></button></div>
+        </div>
+        <div *ngIf="previewType === 'arrange_verse'" class="preview-verse">
+          <strong>Your verse</strong>
+          <div class="preview-verse-line" cdkDropList cdkDropListOrientation="mixed" [cdkDropListData]="previewPlacedVerse" [cdkDropListDisabled]="previewAnswered" (cdkDropListDropped)="previewVerseDrop($event)"><button type="button" cdkDrag [cdkDragStartDelay]="360" *ngFor="let segment of previewPlacedVerse; let i = index" (click)="previewRemoveVerse(segment)"><small>{{ i + 1 }}</small>{{ segment.text }} <i>⠿</i></button><p *ngIf="!previewPlacedVerse.length">Tap the tiles below to build the verse.</p></div>
+          <strong *ngIf="previewAvailableVerse.length">Available tiles</strong>
+          <div class="preview-verse-bank"><button type="button" *ngFor="let segment of previewAvailableVerse" (click)="previewPlaceVerse(segment)">{{ segment.text }}</button></div>
+        </div>
+        <div class="preview-answers" *ngIf="!['sequence','match_pairs','arrange_verse'].includes(previewType)">
+          <button type="button" *ngFor="let answer of previewAnswers; let i = index" [disabled]="previewAnswered" [class.result-correct]="previewAnswered && previewAnswerIsCorrect(answer)" [class.result-wrong]="previewAnswered && previewSelectedAnswer === answer && !previewAnswerIsCorrect(answer)" (click)="previewAnswer(answer)"><i *ngIf="previewType !== 'true_false'">{{ letters[i] || i + 1 }}</i>{{ answer || 'Answer option' }}</button>
+        </div>
+        <p class="preview-help" *ngIf="previewType === 'sequence' && !previewAnswered">Press and hold an item, then drag it into the correct position.</p>
+        <p class="preview-help" *ngIf="previewType === 'match_pairs' && !previewAnswered">Tap one item on each side to connect them. Tap a connected item to undo it.</p>
+        <p class="preview-help" *ngIf="previewType === 'arrange_verse' && !previewAnswered">Tap to place or remove a tile. Press and hold a placed tile to rearrange it.</p>
+        <button class="preview-submit" type="button" *ngIf="previewType === 'sequence' && !previewAnswered" (click)="previewSubmitSequence()">Submit order</button>
+        <button class="preview-submit" type="button" *ngIf="previewType === 'match_pairs' && !previewAnswered" [disabled]="previewPairLeft.length !== previewPairMatchCount" (click)="previewSubmitPairs()">Submit matches</button>
+        <button class="preview-submit" type="button" *ngIf="previewType === 'arrange_verse' && !previewAnswered" [disabled]="previewAvailableVerse.length > 0" (click)="previewSubmitVerse()">Submit verse</button>
+        <article class="preview-result" *ngIf="previewAnswered"><strong>{{ previewCorrect ? 'A LIGHT SPARK!' : 'KEEP SEEKING' }}</strong><p>{{ form.value.explanation }}</p></article>
+        <small *ngIf="form.value.scriptureReference">{{ form.value.scriptureReference }}</small>
+      </section>
+    </div>`,
   styles: [
     `
       :host {
@@ -314,6 +363,22 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
         gap: 1rem;
         margin-bottom: 1rem;
       }
+      .back-button {
+        width: 42px;
+        height: 42px;
+        border: 1px solid #b7c8c1;
+        border-radius: 50%;
+        background: #fff;
+        color: #216450;
+        font-size: 1.8rem;
+      }
+      .editor-modes { display:flex; gap:.4rem; margin:0 0 1rem; }
+      .editor-modes button { padding:.65rem 1rem; border:1px solid #b9c9c3; border-radius:8px; background:#fff; color:#315d52; font-weight:800; }
+      .editor-modes button.active { background:#1d6958; color:#fff; }
+      .json-editor { padding:1rem; border:1px solid #dce4e0; border-radius:12px; background:#fff; }
+      .json-editor label { margin:0; }
+      .json-editor textarea { min-height:60vh; font:13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; tab-size:2; }
+      .json-editor p { color:#65766f; font-size:.78rem; }
       header > a {
         color: #276b5b;
         text-decoration: none;
@@ -655,6 +720,23 @@ export class QuestionEditorPage implements OnInit {
   message = '';
   messageKind: 'info' | 'success' | 'error' = 'info';
   validationErrors: string[] = [];
+  editorMode: 'form' | 'json' = 'form';
+  jsonText = '';
+  showGamePreview = false;
+  previewAnswered = false;
+  previewCorrect = false;
+  previewSelectedAnswer = '';
+  previewSequence: string[] = [];
+  previewCorrectSequence: string[] = [];
+  previewPairLeft: string[] = [];
+  previewPairRight: string[] = [];
+  previewCorrectPairs: Record<string, string> = {};
+  previewPairMatches: Record<string, string> = {};
+  previewSelectedLeft = '';
+  previewSelectedRight = '';
+  previewPlacedVerse: { id: string; text: string }[] = [];
+  previewAvailableVerse: { id: string; text: string }[] = [];
+  previewCorrectVerse: string[] = [];
   busyAction: '' | 'draft' | 'review' | 'publish' | 'translation' | 'media' =
     '';
   categories = CATEGORIES;
@@ -724,7 +806,134 @@ export class QuestionEditorPage implements OnInit {
               Number(q.answerData.correctOptionIds[0]?.replace('o', '')) || 0,
           });
         }
+        this.jsonText = this.stringifyQuestion(q);
       }
+    }
+    if (!this.id) this.syncJsonFromForm();
+  }
+  setEditorMode(mode: 'form' | 'json') {
+    if (mode === this.editorMode) return;
+    if (mode === 'json') this.syncJsonFromForm();
+    else if (!this.applyJson()) return;
+    this.editorMode = mode;
+  }
+  backToQuestions() { void this.router.navigate(['/admin/questions'], { queryParams: this.route.snapshot.queryParams }); }
+  openGamePreview() {
+    if (this.editorMode === 'json' && !this.applyJson()) return;
+    const answer = this.buildAnswer();
+    this.previewAnswered = false;
+    this.previewCorrect = false;
+    this.previewSelectedAnswer = '';
+    this.previewPairMatches = {};
+    this.previewSelectedLeft = '';
+    this.previewSelectedRight = '';
+    this.previewPlacedVerse = [];
+    if (answer.type === 'sequence') {
+      this.previewCorrectSequence = answer.items.map(item => item.text);
+      this.previewSequence = this.previewShuffle(this.previewCorrectSequence);
+    } else if (answer.type === 'match_pairs') {
+      this.previewPairLeft = answer.pairs.map(pair => pair.left);
+      this.previewPairRight = this.previewShuffle(answer.pairs.map(pair => pair.right));
+      this.previewCorrectPairs = Object.fromEntries(answer.pairs.map(pair => [pair.left, pair.right]));
+    } else if (answer.type === 'arrange_verse') {
+      this.previewCorrectVerse = answer.segments.map(segment => segment.id);
+      this.previewAvailableVerse = this.previewShuffle(answer.segments.map(segment => ({ id: segment.id, text: segment.text })));
+    }
+    this.showGamePreview = true;
+  }
+  get previewType() { return this.form.value.questionType || ''; }
+  get previewPairMatchCount() { return Object.keys(this.previewPairMatches).length; }
+  previewDrop(event: CdkDragDrop<string[]>) { moveItemInArray(this.previewSequence, event.previousIndex, event.currentIndex); }
+  previewSubmitSequence() { this.previewCorrect = JSON.stringify(this.previewSequence) === JSON.stringify(this.previewCorrectSequence); this.previewAnswered = true; }
+  previewChooseLeft(item: string) {
+    if (this.previewAnswered) return;
+    if (this.previewPairMatches[item]) { delete this.previewPairMatches[item]; this.previewPairMatches = { ...this.previewPairMatches }; return; }
+    this.previewSelectedLeft = item;
+    this.previewConnectPair();
+  }
+  previewChooseRight(item: string) {
+    if (this.previewAnswered) return;
+    const left = Object.keys(this.previewPairMatches).find(key => this.previewPairMatches[key] === item);
+    if (left) { delete this.previewPairMatches[left]; this.previewPairMatches = { ...this.previewPairMatches }; return; }
+    this.previewSelectedRight = item;
+    this.previewConnectPair();
+  }
+  private previewConnectPair() {
+    if (!this.previewSelectedLeft || !this.previewSelectedRight) return;
+    this.previewPairMatches = { ...this.previewPairMatches, [this.previewSelectedLeft]: this.previewSelectedRight };
+    this.previewSelectedLeft = ''; this.previewSelectedRight = '';
+  }
+  previewRightConnected(item: string) { return Object.values(this.previewPairMatches).includes(item); }
+  previewSubmitPairs() {
+    this.previewCorrect = this.previewPairLeft.every(left => this.previewPairMatches[left] === this.previewCorrectPairs[left]);
+    this.previewAnswered = true;
+  }
+  previewPlaceVerse(segment: { id: string; text: string }) {
+    this.previewAvailableVerse = this.previewAvailableVerse.filter(item => item.id !== segment.id);
+    this.previewPlacedVerse = [...this.previewPlacedVerse, segment];
+  }
+  previewRemoveVerse(segment: { id: string; text: string }) {
+    if (this.previewAnswered) return;
+    this.previewPlacedVerse = this.previewPlacedVerse.filter(item => item.id !== segment.id);
+    this.previewAvailableVerse = [...this.previewAvailableVerse, segment];
+  }
+  previewVerseDrop(event: CdkDragDrop<{ id: string; text: string }[]>) { moveItemInArray(this.previewPlacedVerse, event.previousIndex, event.currentIndex); }
+  previewSubmitVerse() { this.previewCorrect = JSON.stringify(this.previewPlacedVerse.map(item => item.id)) === JSON.stringify(this.previewCorrectVerse); this.previewAnswered = true; }
+  previewAnswer(answer: string | null) { const value = answer || ''; this.previewSelectedAnswer = value; this.previewCorrect = this.previewAnswerIsCorrect(value); this.previewAnswered = true; }
+  previewAnswerIsCorrect(value: string | null) {
+    value = value || '';
+    const answer = this.buildAnswer();
+    if (answer.type === 'multiple_choice') return answer.options.some(option => option.text === value && answer.correctOptionIds.includes(option.id));
+    if (answer.type === 'true_false') return value === (answer.correctValue ? 'True' : 'False');
+    if (answer.type === 'map') return value === answer.correctRegionId;
+    if (answer.type === 'text') return [answer.primaryAnswer, ...answer.acceptedAnswers].some(item => answer.caseSensitive ? item === value : item.toLowerCase() === value.toLowerCase());
+    return false;
+  }
+  private previewShuffle<T>(items: T[]) {
+    const shuffled = [...items];
+    for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
+    return shuffled;
+  }
+  private stringifyQuestion(question: Partial<StudioQuestion>) {
+    const editable: any = { ...question };
+    ['id', 'createdAt', 'updatedAt', 'publishedAt', 'createdBy', 'updatedBy', 'publishedBy'].forEach(key => delete editable[key]);
+    return JSON.stringify(editable, null, 2);
+  }
+  private syncJsonFromForm() {
+    const v = this.form.getRawValue();
+    let passages: any[] = [];
+    try { passages = parseBiblicalScope(v.scopeDefinition || ''); } catch { passages = []; }
+    this.jsonText = this.stringifyQuestion({
+      language: v.language as any, category: v.category as any, questionType: v.questionType as any,
+      difficulty: v.difficulty as any, scope: v.scope as any, supportedModes: v.supportedModes,
+      prompt: v.prompt || '', scriptureReference: v.scriptureReference || '', explanation: v.explanation || '',
+      passages, scopeTokens: scopeTokens(passages, (v.testament || undefined) as any), answerData: this.buildAnswer(),
+      media: this.media, testament: (v.testament || undefined) as any,
+      tags: (v.tags || '').split(',').map(x => x.trim()).filter(Boolean), topics: [],
+      translationGroupId: v.translationGroupId || undefined, contentConceptId: v.contentConceptId || undefined,
+    });
+  }
+  private applyJson(): boolean {
+    try {
+      const q = JSON.parse(this.jsonText);
+      if (!q || Array.isArray(q) || typeof q !== 'object') throw Error('JSON must contain one question object.');
+      this.media = q.media;
+      this.form.patchValue({ ...q, scopeDefinition: formatBiblicalScope(q.passages || []), tags: (q.tags || []).join(','),
+        primaryAnswer: q.answerData ? this.primary(q.answerData) : '',
+        acceptedAnswers: q.answerData?.type === 'text' ? (q.answerData.acceptedAnswers || []).join(',') : '',
+        trueAnswer: q.answerData?.type === 'true_false' ? q.answerData.correctValue : true,
+        mediaAltText: q.media?.altText || '' });
+      if (q.answerData?.type === 'multiple_choice') {
+        q.answerData.options.slice(0, 4).forEach((o: any, i: number) => this.options.at(i).setValue(o.text || ''));
+        this.form.controls.correctIndex.setValue(Math.max(0, q.answerData.options.findIndex((o: any) => q.answerData.correctOptionIds?.includes(o.id))));
+      }
+      this.validationErrors = [];
+      return true;
+    } catch (error: any) {
+      this.validationErrors = [`JSON is invalid: ${error?.message || error}`];
+      this.message = 'Fix the JSON before continuing.';
+      this.messageKind = 'error';
+      return false;
     }
   }
   get options() {
@@ -850,6 +1059,7 @@ export class QuestionEditorPage implements OnInit {
   }
   async save(publish: boolean, status = 'draft') {
     if (this.busyAction) return;
+    if (this.editorMode === 'json' && !this.applyJson()) return;
     this.validationErrors = this.validateQuestion(
       publish || status === 'review'
     );
@@ -918,8 +1128,7 @@ export class QuestionEditorPage implements OnInit {
         ? 'Submitted for review.'
         : 'Draft saved.';
       this.messageKind = 'success';
-      if (!this.route.snapshot.paramMap.get('questionId'))
-        await this.router.navigate(['/admin/questions', this.id]);
+      await this.router.navigate(['/admin/questions'], { queryParams: this.route.snapshot.queryParams });
     } catch (e: any) {
       this.validationErrors = this.firebaseErrors(e);
       this.message = this.validationErrors.length

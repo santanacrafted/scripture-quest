@@ -35,12 +35,17 @@ import { QuestionRepository } from './question.repository';
       ></textarea
       ><button class="parse" (click)="parse()">Parse and validate</button>
     </section>
+    <div *ngIf="message" class="import-message" [class.error]="messageKind === 'error'" role="status" aria-live="polite">
+      <b>{{ messageKind === 'error' ? 'Import did not complete' : 'Import complete' }}</b>
+      <span>{{ message }}</span>
+      <small *ngIf="messageKind === 'error'">Your parsed questions are still selected below. Correct the listed issues and try again.</small>
+    </div>
     <section *ngIf="rows.length" class="results">
       <div class="summary">
         <b>{{ validCount }} ready</b
         ><span>{{ errorCount }} errors · {{ warningCount }} warnings</span
-        ><button [disabled]="!validCount || busy" (click)="import(false)">Import as drafts</button>
-        <button [disabled]="!validCount || busy" (click)="import(true)">{{ busy ? 'Importing…' : 'Import and publish' }}</button>
+        ><button [disabled]="!validCount || busy" (click)="import(false)">{{ busyAction === 'draft' ? 'Importing drafts…' : 'Import as drafts' }}</button>
+        <button [disabled]="!validCount || busy" (click)="import(true)">{{ busyAction === 'publish' ? 'Importing and publishing…' : 'Import and publish' }}</button>
       </div>
       <div class="rows">
         <article *ngFor="let row of rows" [class.bad]="hasErrors(row)">
@@ -117,6 +122,10 @@ import { QuestionRepository } from './question.repository';
         border-radius: 12px;
         background: #fff;
       }
+      .import-message { display:grid; gap:.25rem; margin-top:1rem; padding:.9rem 1rem; border:1px solid #8fc5ae; border-left:5px solid #26705f; border-radius:9px; background:#e9f7f0; color:#185b48; }
+      .import-message.error { border-color:#e2aaa3; border-left-color:#b54131; background:#fff1ef; color:#8c3027; }
+      .import-message span { font-size:.88rem; }
+      .import-message small { opacity:.85; }
       .format {
         display: flex;
         gap: 0.5rem;
@@ -294,7 +303,9 @@ export class AdminImportPage {
   input = '';
   rows: ImportRow[] = [];
   busy = false;
+  busyAction: '' | 'draft' | 'publish' = '';
   message = '';
+  messageKind: 'success' | 'error' = 'success';
   constructor(
     private parser: ImportService,
     private repo: QuestionRepository
@@ -305,6 +316,7 @@ export class AdminImportPage {
       : 'Paste a JSON array of question records…';
   }
   parse() {
+    this.message = '';
     const trimmed = this.input.trim();
     const detectedFormat: 'csv' | 'json' =
       trimmed.startsWith('[') || trimmed.startsWith('{') ? 'json' : 'csv';
@@ -356,17 +368,46 @@ export class AdminImportPage {
     }
   }
   async import(publish: boolean) {
+    if (this.busy) return;
     this.busy = true;
+    this.busyAction = publish ? 'publish' : 'draft';
+    this.message = '';
     try {
       const valid = this.rows
         .filter((x) => x.included && !this.hasErrors(x))
         .map((x) => x.question!);
-      await this.repo.importQuestions(valid, publish);
+      const imported = await this.repo.importQuestions(valid, publish);
       this.rows = [];
       this.input = '';
-      alert(`${valid.length} questions imported${publish ? ' and published for gameplay' : ' as drafts'}.`);
+      this.message = `${imported} question${imported === 1 ? '' : 's'} imported${publish ? ' and published for gameplay.' : ' as drafts.'}`;
+      this.messageKind = 'success';
+    } catch (error: any) {
+      const details = error?.details || error?.customData?.details;
+      const failures = Array.isArray(details?.failures) ? details.failures : [];
+      const submittedRows = this.rows.filter(row => row.included && !this.hasErrors(row));
+      for (const failure of failures) {
+        const row = submittedRows[Number(failure.index)];
+        for (const issue of failure.errors || []) {
+          if (row && !row.issues.some(existing => existing.message === String(issue)))
+            row.issues.push({ severity: 'error', message: String(issue) });
+        }
+      }
+      this.message = this.importError(error, failures.length);
+      this.messageKind = 'error';
     } finally {
       this.busy = false;
+      this.busyAction = '';
     }
+  }
+  private importError(error: any, failureCount: number) {
+    if (failureCount) return `${failureCount} question${failureCount === 1 ? '' : 's'} failed server validation. Details are shown on the affected rows.`;
+    const code = String(error?.code || '');
+    if (code.endsWith('permission-denied')) return 'Your administrator session is not authorized to import. Sign out and back in to refresh your admin access, then try again.';
+    if (code.endsWith('unauthenticated')) return 'Your session expired. Sign in again and retry the import.';
+    if (code.endsWith('already-exists')) return 'The file contains duplicate external IDs. Each externalId must be unique.';
+    if (code.endsWith('not-found') || code.endsWith('unimplemented')) return 'The import service is not available in the deployed Firebase Functions. Deploy the latest Functions and retry.';
+    let message = String(error?.message || 'The server rejected the import.').replace(/^FirebaseError:\s*/, '').replace(/^functions\/[a-z-]+:\s*/, '');
+    if (/internal/i.test(message)) message = 'The server encountered an internal error. Check the Firebase Functions logs for bulkImportQuestions and confirm the latest Functions are deployed.';
+    return message;
   }
 }
