@@ -14,41 +14,49 @@ import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, 
       </div>
       <a routerLink="/admin/questions/new">＋ New question</a>
     </header>
-    <section class="filters">
-      <input
-        [(ngModel)]="search"
-        (ngModelChange)="filtersChanged()"
-        placeholder="Search prompts or references…"
-      /><select [(ngModel)]="status" (ngModelChange)="filtersChanged()">
+    <section class="filter-bar">
+      <button type="button" class="open-filters" (click)="openFilters()">☰ Filters <b *ngIf="activeFilterCount">{{ activeFilterCount }}</b></button>
+      <span>{{ activeFilterCount ? activeFilterCount + ' filters applied' : 'Showing all questions' }}</span>
+      <button *ngIf="activeFilterCount" type="button" class="clear-link" (click)="clearFilters()">Clear filters</button>
+    </section>
+    <div class="filter-modal" *ngIf="filtersOpen" role="dialog" aria-modal="true" aria-label="Question filters" (click)="cancelFilters()">
+      <section class="filter-panel" (click)="$event.stopPropagation()">
+        <header><div><p>QUESTION LIBRARY</p><h2>Filter questions</h2></div><button type="button" class="modal-close" (click)="cancelFilters()" aria-label="Close">×</button></header>
+        <div class="filters">
+      <label class="search-filter">Search<input [(ngModel)]="draftFilters.search" placeholder="Search prompts or references…" /></label>
+      <label>Status<select [(ngModel)]="draftFilters.status">
         <option value="">All statuses</option>
         <option *ngFor="let s of statuses">{{ s }}</option></select
-      ><select [(ngModel)]="active" (ngModelChange)="filtersChanged()">
+      ></label><label>Activity<select [(ngModel)]="draftFilters.active">
         <option value="">All activity</option>
         <option value="active">Active</option>
         <option value="inactive">Not active</option>
-      </select><select [(ngModel)]="category" (ngModelChange)="filtersChanged()">
+      </select></label><label>Category<select [(ngModel)]="draftFilters.category">
         <option value="">All categories</option>
         <option *ngFor="let c of categories" [value]="c[0]">{{ c[1] }}</option>
-      </select
-      ><select [(ngModel)]="questionType" (ngModelChange)="filtersChanged()">
+      </select></label
+      ><label>Question type<select [(ngModel)]="draftFilters.questionType">
         <option value="">All question types</option>
         <option *ngFor="let type of types" [value]="type[0]">
           {{ type[1] }}
         </option>
-      </select><select [(ngModel)]="scope" (ngModelChange)="filtersChanged()">
+      </select></label><label>Scope<select [(ngModel)]="draftFilters.scope">
         <option value="">All scopes</option>
         <option *ngFor="let item of scopes" [value]="item[0]">{{ item[1] }}</option>
-      </select><select [(ngModel)]="supportedMode" (ngModelChange)="filtersChanged()">
+      </select></label><label>Game mode<select [(ngModel)]="draftFilters.supportedMode">
         <option value="">All modes</option>
         <option *ngFor="let item of supportedModes" [value]="item[0]">{{ item[1] }}</option>
-      </select><select [(ngModel)]="book" (ngModelChange)="bookChanged()">
+      </select></label><label>Book<select [(ngModel)]="draftFilters.book" (ngModelChange)="draftFilters.chapter = ''">
         <option value="">All books</option>
         <option *ngFor="let item of books" [value]="item.id">{{ item.name }}</option>
-      </select><select [(ngModel)]="chapter" (ngModelChange)="filtersChanged()" [disabled]="!book">
+      </select></label><label>Chapter<select [(ngModel)]="draftFilters.chapter" [disabled]="!draftFilters.book">
         <option value="">All chapters</option>
-        <option *ngFor="let item of chapters" [value]="item">Chapter {{ item }}</option>
-      </select>
-    </section>
+        <option *ngFor="let item of draftChapters" [value]="item">Chapter {{ item }}</option>
+      </select></label>
+        </div>
+        <footer><button type="button" class="clear-modal" (click)="clearDraftFilters()">Clear all</button><span></span><button type="button" (click)="cancelFilters()">Cancel</button><button type="button" class="apply-filters" (click)="applyFilters()">Apply filters</button></footer>
+      </section>
+    </div>
     <section class="selection-tools" *ngIf="filtered.length">
       <span>{{
         selected.size
@@ -184,17 +192,33 @@ import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, 
       }
       .filters {
         display: grid;
-        grid-template-columns: 2fr repeat(4, 1fr);
+        grid-template-columns: 1fr 1fr;
         gap: 0.7rem;
-        margin: 1.5rem 0;
+        margin: 1rem 0;
       }
-      .filters > * {
+      .filters label { display:grid; gap:.35rem; color:#43544f; font-size:.75rem; font-weight:900; }
+      .filters input,.filters select {
         height: 44px;
         padding: 0 0.7rem;
         border: 1px solid #cfdad5;
         border-radius: 8px;
         background: white;
       }
+      .search-filter { grid-column:1/-1; }
+      .filter-bar { display:flex; align-items:center; gap:.7rem; margin:1.4rem 0 1rem; }
+      .filter-bar>span { color:#60736c; font-size:.8rem; font-weight:800; }
+      .open-filters,.clear-link { min-height:42px; padding:.55rem .8rem; border:1px solid #afc1ba; border-radius:8px; background:#fff; color:#245a4d; font-weight:900; }
+      .open-filters b { display:inline-grid; min-width:1.35rem; height:1.35rem; place-items:center; margin-left:.3rem; border-radius:50%; background:#1d6958; color:#fff; font-size:.7rem; }
+      .clear-link { border:0; background:transparent; text-decoration:underline; }
+      .filter-modal { position:fixed; z-index:1000; inset:0; display:grid; place-items:center; overflow:auto; padding:1rem; background:#071612b8; backdrop-filter:blur(4px); }
+      .filter-panel { width:min(100%,720px); max-height:calc(100svh - 2rem); overflow:auto; padding:1.2rem; border:1px solid #c9d7d1; border-radius:14px; background:#f7f9f8; box-shadow:0 24px 70px #001b1380; }
+      .filter-panel header { margin:0; }
+      .filter-panel h2 { margin:.1rem 0; font:900 1.5rem Georgia; }
+      .modal-close { width:40px; height:40px; border:1px solid #b7c8c1; border-radius:50%; background:#fff; color:#216450; font-size:1.5rem; }
+      .filter-panel footer { display:grid; grid-template-columns:auto 1fr auto auto; gap:.6rem; position:sticky; bottom:-1.2rem; margin:1rem -1.2rem -1.2rem; padding:1rem 1.2rem; border-top:1px solid #d6e0dc; background:#f7f9f8f5; }
+      .filter-panel footer button { min-height:42px; padding:.55rem .8rem; border:1px solid #afc1ba; border-radius:8px; background:#fff; color:#245a4d; font-weight:900; }
+      .filter-panel footer .apply-filters { background:#1d6958; color:#fff; }
+      .filter-panel footer .clear-modal { color:#a13a30; }
       .table {
         overflow: auto;
         border: 1px solid #dce4e0;
@@ -323,6 +347,10 @@ import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, 
         .filters {
           grid-template-columns: 1fr;
         }
+        .search-filter { grid-column:auto; }
+        .filter-panel { padding:.9rem; }
+        .filter-panel footer { grid-template-columns:1fr 1fr; margin:1rem -.9rem -.9rem; padding:.8rem .9rem; }
+        .filter-panel footer span { display:none; }
         header {
           align-items: flex-start;
           gap: 1rem;
@@ -431,6 +459,7 @@ import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, 
   ],
 })
 export class AdminQuestionsPage implements OnInit {
+  private readonly filterStorageKey = 'scripture-quest.studio.question-filters';
   questions: StudioQuestion[] = [];
   search = '';
   status = '';
@@ -441,6 +470,9 @@ export class AdminQuestionsPage implements OnInit {
   supportedMode = '';
   book = '';
   chapter = '';
+  filtersOpen = false;
+  draftFilters = this.emptyFilters();
+  private modalBodyOverflow = '';
   statuses = ['draft', 'review', 'published', 'rejected', 'archived'];
   categories = CATEGORIES;
   types = TYPES;
@@ -453,16 +485,14 @@ export class AdminQuestionsPage implements OnInit {
   constructor(private repo: QuestionRepository, private route: ActivatedRoute, private router: Router) {}
   async ngOnInit() {
     const params = this.route.snapshot.queryParamMap;
-    this.search = params.get('search') || '';
-    this.status = params.get('status') || '';
-    this.active = params.get('active') || '';
-    this.category = params.get('category') || '';
-    this.questionType = params.get('type') || '';
-    this.scope = params.get('scope') || '';
-    this.supportedMode = params.get('mode') || '';
-    this.book = params.get('book') || '';
-    this.chapter = params.get('chapter') || '';
+    let saved: any = {};
+    try { saved = JSON.parse(localStorage.getItem(this.filterStorageKey) || '{}'); } catch { saved = {}; }
+    const source = params.keys.some(key => ['search','status','active','category','type','scope','mode','book','chapter'].includes(key))
+      ? { search:params.get('search'),status:params.get('status'),active:params.get('active'),category:params.get('category'),questionType:params.get('type'),scope:params.get('scope'),supportedMode:params.get('mode'),book:params.get('book'),chapter:params.get('chapter') }
+      : saved;
+    this.setAppliedFilters(source);
     this.questions = await this.repo.list();
+    if (!params.keys.length && this.activeFilterCount) this.filtersChanged();
   }
   get books() {
     const values = new Map<string, string>();
@@ -470,8 +500,12 @@ export class AdminQuestionsPage implements OnInit {
     return [...values].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   }
   get chapters() {
+    return this.chaptersFor(this.book);
+  }
+  get draftChapters() { return this.chaptersFor(this.draftFilters.book); }
+  private chaptersFor(book: string) {
     const values = new Set<number>();
-    this.questions.flatMap(q => q.passages || []).filter(p => p.bookId === this.book).forEach(p => {
+    this.questions.flatMap(q => q.passages || []).filter(p => p.bookId === book).forEach(p => {
       if (p.chapterStart && p.chapterEnd) for (let n = p.chapterStart; n <= p.chapterEnd; n++) values.add(n);
     });
     return [...values].sort((a, b) => a - b);
@@ -482,9 +516,25 @@ export class AdminQuestionsPage implements OnInit {
       mode: this.supportedMode || null, book: this.book || null, chapter: this.chapter || null };
   }
   filtersChanged() {
+    localStorage.setItem(this.filterStorageKey, JSON.stringify(this.currentFilters()));
     void this.router.navigate([], { relativeTo: this.route, queryParams: this.filterParams, replaceUrl: true });
   }
-  bookChanged() { this.chapter = ''; this.filtersChanged(); }
+  get activeFilterCount() { return Object.values(this.currentFilters()).filter(Boolean).length; }
+  openFilters() {
+    this.draftFilters = { ...this.currentFilters() };
+    this.modalBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    this.filtersOpen = true;
+  }
+  cancelFilters() { this.filtersOpen = false; document.body.style.overflow = this.modalBodyOverflow; }
+  applyFilters() { this.setAppliedFilters(this.draftFilters); this.filtersChanged(); this.cancelFilters(); }
+  clearDraftFilters() { this.draftFilters = this.emptyFilters(); }
+  clearFilters() { this.setAppliedFilters(this.emptyFilters()); this.filtersChanged(); }
+  private currentFilters() { return { search:this.search,status:this.status,active:this.active,category:this.category,questionType:this.questionType,scope:this.scope,supportedMode:this.supportedMode,book:this.book,chapter:this.chapter }; }
+  private emptyFilters() { return { search:'',status:'',active:'',category:'',questionType:'',scope:'',supportedMode:'',book:'',chapter:'' }; }
+  private setAppliedFilters(value: any) {
+    this.search=value?.search||'';this.status=value?.status||'';this.active=value?.active||'';this.category=value?.category||'';this.questionType=value?.questionType||'';this.scope=value?.scope||'';this.supportedMode=value?.supportedMode||'';this.book=value?.book||'';this.chapter=value?.chapter||'';
+  }
   get filtered() {
     const s = this.search.toLowerCase();
     return this.questions.filter(

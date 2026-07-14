@@ -12,11 +12,13 @@ import {
 import { firebaseAuth } from '../../firebase';
 import { FirestoreQuickMatch } from '../quick-match.models';
 import { QuickMatchService } from '../quick-match.service';
+import { InteractiveQuestionComponent } from '../components/interactive-question.component';
 @Component({
   selector: 'app-match-play-page',
   standalone: true,
-  imports: [CommonModule, DragDropModule],
-  template: `<main *ngIf="match && question">
+  imports: [CommonModule, DragDropModule, InteractiveQuestionComponent],
+  template: `<app-interactive-question *ngIf="question" [question]="question" [categoryLabel]="icon + ' ' + label" [modeLabel]="phase || ''" [timerLabel]="'⏱ ' + time + 's'" [answered]="answered" [correct]="correct" [submitting]="submitting" [showContinue]="answered" [continueLabel]="returningToBoard ? 'Returning…' : 'Return to board'" (answerSelected)="answer($event)" (continued)="done()"></app-interactive-question>
+  <main *ngIf="false && question">
     <header>
       <span>{{ icon }} {{ label }}</span
       ><b>{{ phase }}</b
@@ -46,7 +48,7 @@ import { QuickMatchService } from '../quick-match.service';
           [class.sequence-correct]="answered && correct"
           [class.sequence-wrong]="answered && !correct"
           cdkDrag
-          [cdkDragStartDelay]="360"
+          [cdkDragStartDelay]="250"
           (cdkDragStarted)="sequenceDragStarted()"
         >
           <span>{{ i + 1 }}</span>
@@ -128,7 +130,7 @@ import { QuickMatchService } from '../quick-match.service';
           <button
             *ngFor="let segment of placedVerseSegments; let i = index"
             cdkDrag
-            [cdkDragStartDelay]="360"
+            [cdkDragStartDelay]="250"
             (cdkDragStarted)="verseDragStarted()"
             (cdkDragEnded)="verseDragEnded()"
             [disabled]="answered || submitting"
@@ -185,7 +187,8 @@ import { QuickMatchService } from '../quick-match.service';
     <div *ngIf="showTimeoutAlert" class="timeout-alert" role="alert">
       <div><b>⏳</b><strong>Time’s up!</strong><span>You lost your turn</span></div>
     </div>
-  </main>`,
+  </main>
+  <main *ngIf="!question" class="question-loading"><div><span>✦</span><b>Preparing your question…</b></div></main>`,
   styles: [
     `
       :host {
@@ -196,12 +199,18 @@ import { QuickMatchService } from '../quick-match.service';
       }
       main {
         box-sizing: border-box;
+        height: 100svh;
         min-height: 100svh;
         background: radial-gradient(circle at top, #275e52, #081311 60%);
         overflow-x: hidden;
+        overflow-y: auto;
         padding: calc(env(safe-area-inset-top) + 0.75rem) 1rem
           calc(env(safe-area-inset-bottom) + 1.25rem);
       }
+      .question-loading { display:grid; place-items:center; background:radial-gradient(circle at top,#275e52,#081311 60%); }
+      .question-loading div { display:grid; gap:.7rem; place-items:center; color:#f3d675; }
+      .question-loading span { font-size:3rem; animation:loading-pulse .8s ease-in-out infinite alternate; }
+      @keyframes loading-pulse { to { transform:scale(1.15); filter:drop-shadow(0 0 15px #f3d675); } }
       header {
         max-width: 42rem;
         margin: auto;
@@ -315,7 +324,7 @@ import { QuickMatchService } from '../quick-match.service';
         text-align: left;
         user-select: none;
         -webkit-touch-callout: none;
-        touch-action: pan-y;
+        touch-action: none;
       }
       .sequence-item > span {
         display: grid;
@@ -356,14 +365,18 @@ import { QuickMatchService } from '../quick-match.service';
         transform: scale(1.02);
       }
       .sequence-placeholder {
+        width:100%;
         min-height: 58px;
         border: 2px dashed #f8da78;
+        border-radius:13px;
+        background:#f8da7814;
+        transition:transform 220ms cubic-bezier(0,0,.2,1),height 220ms ease;
         border-radius: 13px;
         background: #f8da781a;
       }
-      .cdk-drag-animating { transition: transform 180ms cubic-bezier(0, 0, .2, 1); }
+      .cdk-drag-animating { transition: transform 240ms cubic-bezier(0, 0, .2, 1); }
       .sequence-list.cdk-drop-list-dragging .sequence-item:not(.cdk-drag-placeholder) {
-        transition: transform 180ms cubic-bezier(0, 0, .2, 1);
+        transition: transform 240ms cubic-bezier(0, 0,.2,1);
       }
       .pairs-board {
         display: grid;
@@ -543,6 +556,8 @@ export class MatchPlayPage implements OnInit, OnDestroy {
   timedOut = false;
   showTimeoutAlert = false;
   private cachedCorrectAnswer = '';
+  private cachedCategory?: MatchCategory;
+  private previousBodyOverflow = '';
   private turnSave?: Promise<void>;
   returningToBoard = false;
   time = 20;
@@ -563,6 +578,18 @@ export class MatchPlayPage implements OnInit, OnDestroy {
   ) {}
   async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
+    this.previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    if (id) {
+      try {
+        const cached = JSON.parse(sessionStorage.getItem(`quick-match-question:${id}`) || 'null');
+        if (cached?.question) {
+          this.cachedCategory = cached.category;
+          this.question = { ...cached.question, category: cached.category, correctAnswer: '', reference: '', explanation: '' } as Question;
+          this.initializeQuestionControls();
+        }
+      } catch { sessionStorage.removeItem(`quick-match-question:${id}`); }
+    }
     const userId = firebaseAuth.currentUser?.uid;
     this.match = id ? (await this.service.observeMatch(id)) ?? undefined : undefined;
     if (!this.match?.selectedCategory || !this.match.currentQuestion || this.match.currentTurnPlayerId !== userId) {
@@ -576,10 +603,10 @@ export class MatchPlayPage implements OnInit, OnDestroy {
       reference: '',
       explanation: '',
     } as Question;
+    this.cachedCategory = this.match.selectedCategory as MatchCategory;
     this.cachedCorrectAnswer = sessionStorage.getItem(`quick-match-answer:${this.match.id}:${this.question.id}`) || '';
-    if (this.isSequence) this.sequenceItems = [...this.question.choices];
-    if (this.isArrangeVerse)
-      this.availableVerseSegments = [...(this.question.verseSegments || [])];
+    this.initializeQuestionControls();
+    sessionStorage.removeItem(`quick-match-question:${this.match.id}`);
     this.timer = setInterval(() => {
       if (--this.time <= 0) {
         clearInterval(this.timer);
@@ -587,17 +614,26 @@ export class MatchPlayPage implements OnInit, OnDestroy {
       }
     }, 1000);
   }
+  private initializeQuestionControls() {
+    if (!this.question) return;
+    if (this.isSequence) this.sequenceItems = [...this.question.choices];
+    if (this.isArrangeVerse)
+      this.availableVerseSegments = [...(this.question.verseSegments || [])];
+  }
   ngOnDestroy() {
     clearInterval(this.timer);
+    document.body.style.overflow = this.previousBodyOverflow;
   }
   get icon() {
-    return this.match?.selectedCategory
-      ? CATEGORY_ICONS[this.match.selectedCategory]
+    const category = this.match?.selectedCategory || this.cachedCategory;
+    return category
+      ? CATEGORY_ICONS[category]
       : '';
   }
   get label() {
-    return this.match?.selectedCategory
-      ? CATEGORY_LABELS[this.match.selectedCategory]
+    const category = this.match?.selectedCategory || this.cachedCategory;
+    return category
+      ? CATEGORY_LABELS[category]
       : '';
   }
   get phase() {

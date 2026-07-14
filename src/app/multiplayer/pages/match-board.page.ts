@@ -525,6 +525,7 @@ export class MatchBoardPage implements OnInit, OnDestroy {
       this.rouletteLanded = true;
       await new Promise(resolve => setTimeout(resolve, 1000));
       sessionStorage.setItem(`quick-match-answer:${matchId}:${spinResult.question.id}`, spinResult.correctAnswer);
+      sessionStorage.setItem(`quick-match-question:${matchId}`, JSON.stringify({ question: spinResult.question, category }));
       await this.router.navigate(['/multiplayer/play', matchId]);
     } finally {
       clearInterval(rouletteTimer);
@@ -574,6 +575,7 @@ export class MatchBoardPage implements OnInit, OnDestroy {
         this.rouletteLanded = true;
         await new Promise(resolve => setTimeout(resolve, 1000));
         sessionStorage.setItem(`quick-match-answer:${matchId}:${spinResult.question.id}`, spinResult.correctAnswer);
+        sessionStorage.setItem(`quick-match-question:${matchId}`, JSON.stringify({ question: spinResult.question, category: selectedCategory }));
         await this.router.navigate(['/multiplayer/play', matchId]);
       } finally {
         clearInterval(rouletteTimer);

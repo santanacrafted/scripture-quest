@@ -1,18 +1,20 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import {
   CATEGORY_COLORS, CATEGORY_ICONS, CATEGORY_LABELS, MatchCategory,
   MULTIPLAYER_CATEGORIES, Question,
 } from '../multiplayer.models';
 import { QuestionService } from '../question.service';
+import { InteractiveQuestionComponent } from '../components/interactive-question.component';
 
 type TestScreen = 'wheel' | 'transition' | 'question';
 
 @Component({
   selector: 'app-admin-wheel-test-page',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DragDropModule, InteractiveQuestionComponent],
   template: `
     <main *ngIf="screen === 'wheel'" class="board">
       <header><button aria-label="Back" (click)="back()">‹</button><div><small>ADMIN ONLY</small><h1>Wheel Test Arena</h1></div><span>🧪</span></header>
@@ -33,7 +35,9 @@ type TestScreen = 'wheel' | 'transition' | 'question';
         <label>Category</label>
         <select [value]="manualCategory" (change)="selectManualCategory($event)"><option *ngFor="let category of categories" [value]="category">{{ icon(category) }} {{ label(category) }}</option></select>
         <label>Question type</label>
-        <select [value]="selectedType" (change)="selectedType = $any($event.target).value"><option value="">Any available type</option><option *ngFor="let type of manualTypes" [value]="type">{{ formatType(type) }}</option></select>
+        <select [value]="selectedType" (change)="selectQuestionType($event)"><option value="">Any available type</option><option *ngFor="let type of manualTypes" [value]="type">{{ formatType(type) }}</option></select>
+        <label>Specific question</label>
+        <select [value]="selectedQuestionId" (change)="selectedQuestionId = $any($event.target).value"><option value="">Choose randomly</option><option *ngFor="let item of manualQuestions" [value]="item.id">{{ item.text }}</option></select>
         <button class="gold" (click)="startManualChallenge()">Start chosen challenge</button>
       </section>
     </main>
@@ -45,7 +49,8 @@ type TestScreen = 'wheel' | 'transition' | 'question';
       <small>{{ rouletteLanded ? 'Challenge selected' : 'Searching the battle scrolls…' }}</small>
     </main>
 
-    <main *ngIf="screen === 'question' && question" class="question-screen">
+    <app-interactive-question *ngIf="screen === 'question' && question" [question]="question" [categoryLabel]="icon(question.category) + ' ' + label(question.category)" modeLabel="TEST MODE" [editable]="true" [answered]="answered" [correct]="selectedAnswer === question.correctAnswer" [showContinue]="answered" continueLabel="Return to wheel" (answerSelected)="answer($event)" (edit)="editQuestion()" (continued)="returnToWheel()"></app-interactive-question>
+    <main *ngIf="false && screen === 'question' && question" class="question-screen">
       <header class="question-header"><span>{{ icon(question.category) }} {{ label(question.category) }}</span><b>TEST MODE</b><span>∞ NO TIMER</span></header>
       <section class="question-card"><p class="type">{{ formatType(question.questionType) }}</p><h1>{{ question.text }}</h1>
         <button class="edit-question" type="button" (click)="editQuestion()">Edit this question in Studio</button>
@@ -53,8 +58,11 @@ type TestScreen = 'wheel' | 'transition' | 'question';
           <img *ngIf="question.media; else missingPictionaryImage" [src]="question.media.downloadUrl" [alt]="question.media.altText" />
           <ng-template #missingPictionaryImage><span>Image unavailable</span></ng-template>
         </figure>
-        <div class="answers"><button *ngFor="let choice of question.choices; let i = index" [disabled]="answered" [class.correct]="answered && choice === question.correctAnswer" [class.wrong]="answered && selectedAnswer === choice && choice !== question.correctAnswer" (click)="answer(choice)"><i>{{ letters[i] }}</i>{{ choice }}</button></div>
-        <button *ngIf="!answered" class="reveal" (click)="revealAnswer()">Reveal answer</button>
+        <div *ngIf="question.questionType === 'sequence'" class="test-sequence" cdkDropList [cdkDropListData]="sequenceItems" [cdkDropListDisabled]="answered" (cdkDropListDropped)="dropSequence($event)"><div *ngFor="let item of sequenceItems; let i = index" cdkDrag [cdkDragStartDelay]="250"><i>{{ i + 1 }}</i><b>{{ item }}</b><span>⠿</span></div></div>
+        <p *ngIf="question.questionType === 'sequence' && !answered" class="sequence-help">Press briefly, then drag an item into the correct position.</p>
+        <button *ngIf="question.questionType === 'sequence' && !answered" class="continue" (click)="submitSequence()">Submit order</button>
+        <div class="answers" *ngIf="question.questionType !== 'sequence'"><button *ngFor="let choice of question.choices; let i = index" [disabled]="answered" [class.correct]="answered && choice === question.correctAnswer" [class.wrong]="answered && selectedAnswer === choice && choice !== question.correctAnswer" (click)="answer(choice)"><i>{{ letters[i] }}</i>{{ choice }}</button></div>
+        <button *ngIf="!answered && question.questionType !== 'sequence'" class="reveal" (click)="revealAnswer()">Reveal answer</button>
         <article *ngIf="answered"><strong>{{ selectedAnswer === question.correctAnswer ? 'A LIGHT SPARK!' : 'KEEP SEEKING' }}</strong><p *ngIf="selectedAnswer !== question.correctAnswer">Correct answer: {{ question.correctAnswer }}</p><p>{{ question.explanation }}</p><small>{{ question.reference }}</small><button class="continue" (click)="returnToWheel()">Return to wheel</button></article>
       </section>
     </main>
@@ -64,6 +72,7 @@ type TestScreen = 'wheel' | 'transition' | 'question';
     .transition{--category:#4dd6a7;position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:1rem;background:radial-gradient(circle at center,color-mix(in srgb,var(--category) 72%,white 10%),color-mix(in srgb,var(--category) 45%,#06100e 55%) 48%,#06100e);text-align:center}.glow{position:absolute;width:70vmin;aspect-ratio:1;border-radius:50%;background:var(--category);filter:blur(70px);opacity:.3}.emblem{position:relative;display:grid;width:6rem;aspect-ratio:1;place-items:center;border:3px solid #ffe59a;border-radius:50%;background:#09201dd9;box-shadow:0 0 35px var(--category);font-size:3rem}.transition>p{position:relative;margin:.8rem 0 .15rem;color:#ffe48c;font-weight:900;letter-spacing:.16em;text-transform:uppercase}.transition>h2{position:relative;margin:0 0 1rem;font:900 clamp(1.55rem,7vw,2.5rem) Georgia;text-transform:uppercase}.roulette{position:relative;display:grid;width:min(76vw,19rem);aspect-ratio:1;place-items:center}.ring{position:absolute;inset:0;border:4px solid #f6d474;border-radius:50%;background:#071311dd;box-shadow:0 1rem 2.5rem #0008,inset 0 0 30px var(--category);animation:type-spin .72s linear infinite}.roulette.landed .ring{animation:none}.ring span{position:absolute;left:50%;top:50%;font-size:1.5rem;transform:rotate(calc(var(--slot) * 45deg)) translateY(-7.5rem) rotate(calc(var(--slot) * -45deg));transform-origin:0 0}.pointer{position:absolute;z-index:2;top:-.35rem;color:#ffe078;font-size:1.7rem}.roulette strong{position:relative;max-width:11rem;color:#fff;font:900 1.3rem Georgia;text-transform:uppercase}.transition>small{position:relative;color:#cce0da}@keyframes type-spin{to{transform:rotate(360deg)}}
     .question-screen{padding:calc(env(safe-area-inset-top) + .75rem) 1rem calc(env(safe-area-inset-bottom) + 1.25rem);background:radial-gradient(circle at top,#275e52,#081311 60%)}.question-header{display:flex;justify-content:space-between;color:#f3d675;font-size:.72rem;font-weight:900;text-transform:uppercase}.question-header b{color:#c2d8d1}.question-card{max-width:42rem;margin:clamp(1.25rem,5vh,3rem) auto 0;text-align:center}.type{color:#f5d36e;font-weight:900;letter-spacing:.18em;text-transform:uppercase}.question-card h1{margin:.65rem 0;font:900 clamp(1.45rem,6vw,2.65rem) Georgia;line-height:1.08;text-shadow:0 3px 10px #000}.question-card>img{width:100%;max-height:22rem;object-fit:contain;border:3px solid #e5c56b;border-radius:18px}.answers{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-top:1.3rem}.answers button{display:flex;min-height:56px;align-items:center;gap:.7rem;padding:.65rem;border:2px solid #8d7746;border-radius:12px;background:#122724;color:#fff;text-align:left;font-weight:800}.answers i{display:grid;min-width:30px;height:30px;place-items:center;border-radius:50%;background:#295d54;color:#f8da78;font-style:normal}.answers .correct{background:#17694f;border-color:#65e0a2}.answers .wrong{background:#7a2828;border-color:#f98c86}.reveal{margin-top:.75rem;border:0;background:none;color:#f5d36e;font-weight:900}.question-card article{margin-top:1rem;padding:1rem;border:1px solid #8d7746;border-radius:12px;background:#10241f}.question-card article>strong{color:#f5d36e;font:900 1.2rem Georgia}.question-card article p{color:#cbd9d5}.continue{display:block;width:100%;min-height:48px;margin-top:1rem;border:2px solid #ffe39a;border-radius:10px;background:linear-gradient(#ffe9a4,#d89e2f);color:#201707;font-weight:1000;text-transform:uppercase}
     .pictionary-frame{display:grid;width:100%;aspect-ratio:16/9;place-items:center;margin:.9rem 0 1rem;overflow:hidden;border:3px solid #e5c56b;border-radius:16px;background:#0d211d;box-shadow:0 12px 30px #0008,0 0 24px #e5c56b33}.pictionary-frame img{display:block;width:100%;height:100%;object-fit:contain}.pictionary-frame span{color:#d9c98f;font-weight:800}
+    .test-sequence{display:grid;gap:.65rem;margin-top:1.2rem}.test-sequence>div{display:grid;grid-template-columns:2.3rem 1fr 2rem;min-height:58px;align-items:center;gap:.7rem;padding:.65rem;border:2px solid #8d7746;border-radius:12px;background:#122724;text-align:left;touch-action:none}.test-sequence i{display:grid;width:2.1rem;height:2.1rem;place-items:center;border-radius:50%;background:#295d54;color:#f8da78;font-style:normal}.test-sequence span{color:#f8da78;font-size:1.4rem}.sequence-help{color:#b7cec7;font-size:.82rem}
     .edit-question{margin:.35rem 0 .6rem;padding:.55rem .8rem;border:1px solid #dfc16c;border-radius:8px;background:#10241f;color:#f5d36e;font-weight:900}
   `],
 })
@@ -75,6 +84,7 @@ export class AdminWheelTestPage implements OnDestroy {
   manualCategory: MatchCategory = 'characters';
   selectedCategory: MatchCategory | null = null;
   selectedType = '';
+  selectedQuestionId = '';
   question: Question | undefined;
   selectedAnswer = '';
   answered = false;
@@ -82,12 +92,15 @@ export class AdminWheelTestPage implements OnDestroy {
   rouletteLanded = false;
   displayedType = 'Mystery challenge';
   rotation = 0;
+  sequenceItems: string[] = [];
   private timers: number[] = [];
 
   constructor(private readonly questions: QuestionService, private readonly router: Router) {}
   get manualTypes() { return this.questions.getBattleQuestionTypes(); }
+  get manualQuestions() { return this.questions.getBattleQuestions(this.manualCategory, this.selectedType); }
   chooseCategory(category: MatchCategory, event: Event) { event.stopPropagation(); if (!this.spinning) this.beginTransition(category, ''); }
-  selectManualCategory(event: Event) { this.manualCategory = (event.target as HTMLSelectElement).value as MatchCategory; this.selectedType = ''; }
+  selectManualCategory(event: Event) { this.manualCategory = (event.target as HTMLSelectElement).value as MatchCategory; this.selectedType = ''; this.selectedQuestionId = ''; }
+  selectQuestionType(event: Event) { this.selectedType = (event.target as HTMLSelectElement).value; this.selectedQuestionId = ''; }
   startManualChallenge() { this.beginTransition(this.manualCategory, this.selectedType); }
   spinWheel() {
     if (this.spinning) return;
@@ -110,13 +123,18 @@ export class AdminWheelTestPage implements OnDestroy {
     this.addTimer(() => {
       window.clearInterval(interval);
       const type = requestedType;
-      this.question = type ? this.questions.getRandomQuestionByCategoryAndType(category, type) : this.questions.getRandomQuestionByCategory(category);
+      this.question = this.selectedQuestionId
+        ? this.questions.getQuestionById(this.selectedQuestionId)
+        : type ? this.questions.getRandomQuestionByCategoryAndType(category, type) : this.questions.getRandomQuestionByCategory(category);
+      this.sequenceItems = this.question?.questionType === 'sequence' ? [...this.question.choices] : [];
       this.displayedType = this.formatType(this.question?.questionType || type || 'Mystery challenge');
       this.rouletteLanded = true;
       this.addTimer(() => { this.answered = false; this.selectedAnswer = ''; this.screen = 'question'; }, 1000);
     }, 2000);
   }
   answer(choice: string) { this.selectedAnswer = choice; this.answered = true; }
+  dropSequence(event: CdkDragDrop<string[]>) { if (!this.answered) moveItemInArray(this.sequenceItems, event.previousIndex, event.currentIndex); }
+  submitSequence() { this.answer(JSON.stringify(this.sequenceItems.map(item => item.trim()))); }
   revealAnswer() { if (this.question) { this.selectedAnswer = ''; this.answered = true; } }
   editQuestion() { if (this.question) void this.router.navigate(['/admin/questions', this.question.id]); }
   returnToWheel() { this.question = undefined; this.answered = false; this.selectedAnswer = ''; this.screen = 'wheel'; }

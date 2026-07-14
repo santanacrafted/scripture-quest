@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import {
   FormArray,
   FormBuilder,
@@ -8,6 +8,8 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { InteractiveQuestionComponent } from '../multiplayer/components/interactive-question.component';
+import { MatchCategory, Question } from '../multiplayer/multiplayer.models';
 import {
   CATEGORIES,
   ContentQuestionType,
@@ -23,7 +25,7 @@ import { MediaService } from './media.service';
 import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical-scope';
 @Component({
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DragDropModule],
+  imports: [CommonModule, ReactiveFormsModule, DragDropModule, InteractiveQuestionComponent],
   template: `<header>
       <button class="back-button" type="button" (click)="backToQuestions()" aria-label="Back to questions">‹</button>
       <div>
@@ -311,17 +313,18 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
       </footer>
     </form>
     <div class="game-preview" *ngIf="showGamePreview" role="dialog" aria-modal="true" aria-label="Game question preview">
-      <button class="preview-close" type="button" (click)="showGamePreview = false" aria-label="Close preview">×</button>
+      <app-interactive-question *ngIf="gamePreviewQuestion" [question]="gamePreviewQuestion" [categoryLabel]="categoryLabel" modeLabel="PREVIEW MODE" [closable]="true" [answered]="previewAnswered" [correct]="previewCorrect" (answerSelected)="handlePreviewAnswer($event)" (closed)="closeGamePreview()"></app-interactive-question>
+      <button *ngIf="false" class="preview-close" type="button" (click)="closeGamePreview()" aria-label="Close preview">×</button>
       <div class="preview-header"><span>{{ categoryLabel }}</span><b>PREVIEW MODE</b><span>∞ NO TIMER</span></div>
-      <section class="preview-card">
+      <section class="preview-card" *ngIf="false">
         <p>{{ (form.value.questionType || '').replaceAll('_', ' ') }}</p>
         <h1>{{ form.value.prompt || 'Your question prompt appears here.' }}</h1>
         <figure *ngIf="previewType === 'pictionary'" class="preview-image">
-          <img *ngIf="media" [src]="media.downloadUrl" [alt]="form.value.mediaAltText || media.altText" />
+          <img *ngIf="media" [src]="media!.downloadUrl" [alt]="form.value.mediaAltText || media!.altText" />
           <span *ngIf="!media">Image unavailable</span>
         </figure>
         <div *ngIf="previewType === 'sequence'" class="preview-sequence" cdkDropList [cdkDropListData]="previewSequence" [cdkDropListDisabled]="previewAnswered" (cdkDropListDropped)="previewDrop($event)">
-          <div *ngFor="let item of previewSequence; let i = index" cdkDrag [cdkDragStartDelay]="360" [class.result-correct]="previewAnswered && previewCorrect" [class.result-wrong]="previewAnswered && !previewCorrect"><span>{{ i + 1 }}</span><b>{{ item }}</b><i>⠿</i></div>
+          <div *ngFor="let item of previewSequence; let i = index" cdkDrag [cdkDragStartDelay]="250" [class.result-correct]="previewAnswered && previewCorrect" [class.result-wrong]="previewAnswered && !previewCorrect"><span>{{ i + 1 }}</span><b>{{ item }}</b><i>⠿</i></div>
         </div>
         <div *ngIf="previewType === 'match_pairs'" class="preview-pairs">
           <div><strong>Choose from this side</strong><button type="button" *ngFor="let item of previewPairLeft" [class.selected]="previewSelectedLeft === item" [class.connected]="!!previewPairMatches[item]" (click)="previewChooseLeft(item)">{{ item }} <i>{{ previewPairMatches[item] ? '✓' : '○' }}</i></button></div>
@@ -329,7 +332,7 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
         </div>
         <div *ngIf="previewType === 'arrange_verse'" class="preview-verse">
           <strong>Your verse</strong>
-          <div class="preview-verse-line" cdkDropList cdkDropListOrientation="mixed" [cdkDropListData]="previewPlacedVerse" [cdkDropListDisabled]="previewAnswered" (cdkDropListDropped)="previewVerseDrop($event)"><button type="button" cdkDrag [cdkDragStartDelay]="360" *ngFor="let segment of previewPlacedVerse; let i = index" (click)="previewRemoveVerse(segment)"><small>{{ i + 1 }}</small>{{ segment.text }} <i>⠿</i></button><p *ngIf="!previewPlacedVerse.length">Tap the tiles below to build the verse.</p></div>
+          <div class="preview-verse-line" cdkDropList cdkDropListOrientation="mixed" [cdkDropListData]="previewPlacedVerse" [cdkDropListDisabled]="previewAnswered" (cdkDropListDropped)="previewVerseDrop($event)"><button type="button" cdkDrag [cdkDragStartDelay]="250" *ngFor="let segment of previewPlacedVerse; let i = index" (click)="previewRemoveVerse(segment)"><small>{{ i + 1 }}</small>{{ segment.text }} <i>⠿</i></button><p *ngIf="!previewPlacedVerse.length">Tap the tiles below to build the verse.</p></div>
           <strong *ngIf="previewAvailableVerse.length">Available tiles</strong>
           <div class="preview-verse-bank"><button type="button" *ngFor="let segment of previewAvailableVerse" (click)="previewPlaceVerse(segment)">{{ segment.text }}</button></div>
         </div>
@@ -714,7 +717,7 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
     `,
   ],
 })
-export class QuestionEditorPage implements OnInit {
+export class QuestionEditorPage implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   id = '';
   message = '';
@@ -723,6 +726,8 @@ export class QuestionEditorPage implements OnInit {
   editorMode: 'form' | 'json' = 'form';
   jsonText = '';
   showGamePreview = false;
+  gamePreviewQuestion?: Question;
+  private previewBodyOverflow = '';
   previewAnswered = false;
   previewCorrect = false;
   previewSelectedAnswer = '';
@@ -839,8 +844,35 @@ export class QuestionEditorPage implements OnInit {
       this.previewCorrectVerse = answer.segments.map(segment => segment.id);
       this.previewAvailableVerse = this.previewShuffle(answer.segments.map(segment => ({ id: segment.id, text: segment.text })));
     }
+    this.gamePreviewQuestion = this.toGameQuestion(answer);
+    this.previewBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     this.showGamePreview = true;
   }
+  closeGamePreview() { this.showGamePreview = false; document.body.style.overflow = this.previewBodyOverflow; }
+  handlePreviewAnswer(value: string) {
+    const answer = this.buildAnswer();
+    let expected = '';
+    if (answer.type === 'sequence') expected = JSON.stringify([...answer.items].sort((a,b) => a.correctPosition-b.correctPosition).map(item => item.text.trim()));
+    else if (answer.type === 'match_pairs') expected = JSON.stringify(answer.pairs.map(pair => ({left:pair.left.trim(),right:pair.right.trim()})).sort((a,b)=>a.left.localeCompare(b.left)));
+    else if (answer.type === 'arrange_verse') expected = JSON.stringify([...answer.segments].sort((a,b)=>a.correctPosition-b.correctPosition).map(item=>item.id));
+    this.previewCorrect = expected ? value === expected : this.previewAnswerIsCorrect(value);
+    this.previewAnswered = true;
+    if (this.gamePreviewQuestion) this.gamePreviewQuestion = { ...this.gamePreviewQuestion, correctAnswer: expected || this.correctAnswerText(answer) };
+  }
+  private toGameQuestion(answer: QuestionAnswerData): Question {
+    let choices:string[]=[]; let correct=''; let matchPairs:Question['matchPairs']; let verseSegments:Question['verseSegments'];
+    if(answer.type==='multiple_choice'){choices=answer.options.map(x=>x.text);correct=answer.options.find(x=>answer.correctOptionIds.includes(x.id))?.text||'';}
+    else if(answer.type==='true_false'){choices=['True','False'];correct=answer.correctValue?'True':'False';}
+    else if(answer.type==='text'){choices=[answer.primaryAnswer,...(answer.distractors||[])];correct=answer.primaryAnswer;}
+    else if(answer.type==='map'){choices=[answer.correctRegionId];correct=answer.correctRegionId;}
+    else if(answer.type==='sequence'){const ordered=[...answer.items].sort((a,b)=>a.correctPosition-b.correctPosition);choices=this.previewShuffle(ordered.map(x=>x.text));correct=JSON.stringify(ordered.map(x=>x.text.trim()));}
+    else if(answer.type==='match_pairs'){matchPairs={left:answer.pairs.map(x=>x.left),right:this.previewShuffle(answer.pairs.map(x=>x.right))};correct=JSON.stringify(answer.pairs.map(x=>({left:x.left.trim(),right:x.right.trim()})).sort((a,b)=>a.left.localeCompare(b.left)));}
+    else {const ordered=[...answer.segments].sort((a,b)=>a.correctPosition-b.correctPosition);verseSegments=this.previewShuffle(answer.segments.map(x=>({id:x.id,text:x.text})));correct=JSON.stringify(ordered.map(x=>x.id));}
+    return {id:this.id||'preview',category:(this.form.value.category==='bible_knowledge'?'knowledge':this.form.value.category) as MatchCategory,questionType:this.form.value.questionType as any,difficulty:this.form.value.difficulty as any,scope:(this.form.value.scope||'whole_bible') as any,supportedModes:this.form.value.supportedModes||[],scopeTokens:[],text:this.form.value.prompt||'',choices,correctAnswer:correct,reference:this.form.value.scriptureReference||'',explanation:this.form.value.explanation||'',media:this.media?{downloadUrl:this.media.downloadUrl,altText:this.form.value.mediaAltText||this.media.altText}:undefined,matchPairs,verseSegments};
+  }
+  private correctAnswerText(answer:QuestionAnswerData){if(answer.type==='multiple_choice')return answer.options.find(x=>answer.correctOptionIds.includes(x.id))?.text||'';if(answer.type==='true_false')return answer.correctValue?'True':'False';if(answer.type==='text')return answer.primaryAnswer;if(answer.type==='map')return answer.correctRegionId;return '';}
+  ngOnDestroy() { if (this.showGamePreview) document.body.style.overflow = this.previewBodyOverflow; }
   get previewType() { return this.form.value.questionType || ''; }
   get previewPairMatchCount() { return Object.keys(this.previewPairMatches).length; }
   previewDrop(event: CdkDragDrop<string[]>) { moveItemInArray(this.previewSequence, event.previousIndex, event.currentIndex); }

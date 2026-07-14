@@ -252,9 +252,22 @@ export class QuestionService {
     } else if (answer.type === 'text') {
       correct = answer.primaryAnswer;
       choices = [correct, ...(answer.distractors || [])];
+    } else if (answer.type === 'sequence') {
+      const ordered = [...(answer.items || [])].sort((a: any, b: any) => a.correctPosition - b.correctPosition);
+      choices = ordered.map((item: any) => item.text).sort(() => Math.random() - .5);
+      correct = JSON.stringify(ordered.map((item: any) => String(item.text).trim()));
+    } else if (answer.type === 'match_pairs') {
+      const pairs = answer.pairs || [];
+      correct = JSON.stringify(pairs.map((pair: any) => ({ left: String(pair.left).trim(), right: String(pair.right).trim() })).sort((a: any, b: any) => a.left.localeCompare(b.left)));
+    } else if (answer.type === 'arrange_verse') {
+      const segments = [...(answer.segments || [])].sort((a: any, b: any) => a.correctPosition - b.correctPosition);
+      correct = JSON.stringify(segments.map((segment: any) => String(segment.id)));
+    } else if (answer.type === 'map') {
+      correct = answer.correctRegionId;
+      choices = [correct];
     } else return null;
     choices = [...new Map(choices.filter(Boolean).map((choice:string)=>[choice.trim().toLowerCase(),choice.trim()])).values()] as string[];
-    if (choices.length < 4) {
+    if (!['sequence', 'match_pairs', 'arrange_verse'].includes(data.questionType) && choices.length < 4) {
       const fillers = ['Moses', 'Jerusalem', 'Genesis', 'None of these'].filter(
         (x) => x !== correct && !choices.includes(x)
       );
@@ -263,7 +276,7 @@ export class QuestionService {
     const media = data.media?.downloadUrl
       ? { downloadUrl: data.media.downloadUrl, altText: data.media.altText || 'Pictionary challenge image' }
       : undefined;
-    return {
+    const result = {
       id,
       category,
       questionType: data.questionType,
@@ -278,9 +291,22 @@ export class QuestionService {
       explanation: data.explanation || '',
       media,
     } as Question;
+    if (answer.type === 'match_pairs') result.matchPairs = {
+      left: (answer.pairs || []).map((pair: any) => pair.left).sort(() => Math.random() - .5),
+      right: (answer.pairs || []).map((pair: any) => pair.right).sort(() => Math.random() - .5),
+    };
+    if (answer.type === 'arrange_verse') result.verseSegments = (answer.segments || []).map((segment: any) => ({ id: segment.id, text: segment.text })).sort(() => Math.random() - .5);
+    return result;
   }
   getQuestionById(id: string) {
     return this.questions.find((q) => q.id === id);
+  }
+  getBattleQuestions(category?: MatchCategory, questionType?: string) {
+    return this.questions.filter(question =>
+      question.supportedModes.includes('battle') &&
+      (!category || question.category === category) &&
+      (!questionType || question.questionType === questionType)
+    );
   }
   getRandomQuestionByCategory(category: MatchCategory, hardOnly = false) {
     const pool = this.questions.filter(
