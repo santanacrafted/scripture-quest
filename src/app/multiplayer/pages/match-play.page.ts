@@ -25,11 +25,12 @@ import { QuickMatchService } from '../quick-match.service';
     <section>
       <p class="type">{{ typeLabel }}</p>
       <h1>{{ question.text }}</h1>
-      <figure *ngIf="isPictionary && question.media" class="pictionary-image">
-        <img
+      <figure *ngIf="isPictionary" class="pictionary-image">
+        <img *ngIf="question.media; else missingPictionaryImage"
           [src]="question.media.downloadUrl"
           [alt]="question.media.altText"
         />
+        <ng-template #missingPictionaryImage><span>Image unavailable</span></ng-template>
       </figure>
       <div
         *ngIf="isSequence"
@@ -178,7 +179,7 @@ import { QuickMatchService } from '../quick-match.service';
         <p *ngIf="timedOut">Time expired before an answer was chosen.</p>
         <p>{{ question.explanation }}</p>
         <small>{{ question.reference }}</small
-        ><button class="continue" (click)="done()">Return to board</button>
+        ><button class="continue" [disabled]="returningToBoard" (click)="done()">{{ returningToBoard ? 'Returning…' : 'Return to board' }}</button>
       </article>
     </section>
     <div *ngIf="showTimeoutAlert" class="timeout-alert" role="alert">
@@ -234,8 +235,7 @@ import { QuickMatchService } from '../quick-match.service';
       }
       .pictionary-image {
         width: 100%;
-        height: min(35svh, 23rem);
-        min-height: 13rem;
+        aspect-ratio: 16 / 9;
         margin: 0.75rem 0 1rem;
         overflow: hidden;
         border: 3px solid #e5c56b;
@@ -248,6 +248,13 @@ import { QuickMatchService } from '../quick-match.service';
         width: 100%;
         height: 100%;
         object-fit: contain;
+      }
+      .pictionary-image span {
+        display: grid;
+        height: 100%;
+        place-items: center;
+        color: #d9c98f;
+        font-weight: 800;
       }
       .answers {
         display: grid;
@@ -537,6 +544,7 @@ export class MatchPlayPage implements OnInit, OnDestroy {
   showTimeoutAlert = false;
   private cachedCorrectAnswer = '';
   private turnSave?: Promise<void>;
+  returningToBoard = false;
   time = 20;
   letters = ['A', 'B', 'C', 'D'];
   sequenceItems: string[] = [];
@@ -762,18 +770,23 @@ export class MatchPlayPage implements OnInit, OnDestroy {
     void this.answer('__timeout__');
     setTimeout(() => this.showTimeoutAlert = false, 1400);
   }
-  async done() {
-    if (!this.match) return;
-    // Feedback is instant, but do not reopen the board until its Firestore
-    // phase has advanced beyond the question that was just answered.
-    await this.turnSave;
-    if (this.waitingForOpponent) {
-      await this.router.navigate(['/multiplayer-battle']);
-      return;
-    }
-    await this.router.navigate([
-      '/multiplayer/board',
-      this.match.id,
-    ]);
+  done() {
+    if (!this.match || this.returningToBoard) return;
+    this.returningToBoard = true;
+    const matchId = this.match.id;
+    const pendingSave = this.turnSave;
+
+    // Navigation must never wait for a cold Cloud Function. The answer save
+    // was already started when the player answered and safely continues after
+    // this component is destroyed.
+    void this.router.navigate(['/multiplayer/board', matchId]);
+
+    // Solo/waiting matches still land on the battle page once the authoritative
+    // result arrives, without holding up the immediate board transition.
+    void pendingSave?.then(() => {
+      if (this.waitingForOpponent) {
+        void this.router.navigate(['/multiplayer-battle']);
+      }
+    });
   }
 }

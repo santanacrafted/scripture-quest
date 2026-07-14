@@ -260,6 +260,9 @@ export class QuestionService {
       );
       choices = [...choices, ...fillers].slice(0, 4);
     }
+    const media = data.media?.downloadUrl
+      ? { downloadUrl: data.media.downloadUrl, altText: data.media.altText || 'Pictionary challenge image' }
+      : undefined;
     return {
       id,
       category,
@@ -273,6 +276,7 @@ export class QuestionService {
       correctAnswer: correct,
       reference: data.scriptureReference || '',
       explanation: data.explanation || '',
+      media,
     } as Question;
   }
   getQuestionById(id: string) {
@@ -306,6 +310,14 @@ export class QuestionService {
         .filter((question) => question.category === category && question.supportedModes.includes('battle'))
         .map((question) => question.questionType)
     )];
+  }
+  getBattleQuestionTypes() {
+    return [
+      'multiple_choice', 'pictionary', 'verse_completion', 'reference_match',
+      'who_am_i', 'who_said_it', 'sequence', 'map_challenge',
+      'emoji_challenge', 'true_false', 'match_pairs', 'odd_one_out',
+      'what_happens_next', 'arrange_verse',
+    ];
   }
   rollDifficulty(): Difficulty {
     const n = Math.random() * 100;

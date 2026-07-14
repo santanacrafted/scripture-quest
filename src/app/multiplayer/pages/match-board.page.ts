@@ -17,7 +17,11 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
   selector: 'app-match-board-page',
   standalone: true,
   imports: [CommonModule],
-  template: ` <main class="board" *ngIf="match">
+  template: `
+  <main *ngIf="syncingAnswer && !match" class="board !grid place-items-center" aria-live="polite">
+    <div class="text-center text-emerald-100"><span class="block text-5xl text-amber-300">✦</span><h2 class="my-2 font-serif text-xl font-black uppercase text-amber-300">Returning to the board</h2><p>Preparing your next turn…</p></div>
+  </main>
+  <main class="board" *ngIf="match">
     <header>
       <button (click)="back()">‹</button><span>LIGHT BATTLE</span
       ><button (click)="forfeit()">⋯</button>
@@ -386,7 +390,9 @@ export class MatchBoardPage implements OnInit, OnDestroy {
   transitionCategory: MatchCategory | null = null;
   displayedQuestionType = 'Mystery challenge';
   rouletteLanded = false;
+  syncingAnswer = false;
   private subscription?: Subscription;
+  private syncFallbackTimer?: ReturnType<typeof setTimeout>;
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -399,18 +405,39 @@ export class MatchBoardPage implements OnInit, OnDestroy {
       this.router.navigate(['/multiplayer-battle']);
       return;
     }
+    this.syncingAnswer = this.service.hasPendingAnswer(id);
+    if (this.syncingAnswer) {
+      this.syncFallbackTimer = setTimeout(() => void this.resolveSyncFallback(id), 8000);
+    }
     this.subscription = this.service.watchMatch(id).subscribe(match => {
       if (!match || !match.playerIds.includes(this.myId) || ['cancelled', 'completed'].includes(match.status)) {
         void this.router.navigate(['/multiplayer-battle']);
         return;
       }
+      // Firestore may first replay the question snapshot that existed before
+      // the answer transaction committed. Never make that stale phase
+      // interactive after the player has already returned to the board.
+      if (this.syncingAnswer && match.phase === 'question') return;
+      this.syncingAnswer = false;
+      clearTimeout(this.syncFallbackTimer);
       this.match = match;
     });
   }
   ngOnDestroy() {
     this.subscription?.unsubscribe();
     clearTimeout(this.chargeTimer);
+    clearTimeout(this.syncFallbackTimer);
     if (this.charging) void Haptics.selectionEnd();
+  }
+  private async resolveSyncFallback(matchId: string) {
+    if (!this.syncingAnswer) return;
+    const latest = await this.service.observeMatch(matchId);
+    this.syncingAnswer = false;
+    if (latest?.phase === 'question') {
+      void this.router.navigate(['/multiplayer/play', matchId]);
+      return;
+    }
+    if (latest) this.match = latest;
   }
   get opponentId() {
     return this.match?.playerIds.find((x) => x !== this.myId) || '';

@@ -17,6 +17,7 @@ export class QuickMatchService {
   readonly queueState$ = this.queueStateSubject.asObservable();
 
   private unsubscribeQueue?: () => void;
+  private readonly pendingAnswerSaves = new Map<string, Promise<import('./quick-match.models').MatchAnswerResult>>();
 
   constructor(private readonly authService: AuthService) {}
 
@@ -128,8 +129,21 @@ export class QuickMatchService {
     await this.callFunction('chooseLightChallenge', { matchId, category, action });
   }
 
-  async submitAnswer(matchId: string, answer: string): Promise<import('./quick-match.models').MatchAnswerResult> {
-    return this.callFunction('submitAnswer', { matchId, answer }) as unknown as Promise<import('./quick-match.models').MatchAnswerResult>;
+  submitAnswer(matchId: string, answer: string): Promise<import('./quick-match.models').MatchAnswerResult> {
+    const save = this.callFunction('submitAnswer', { matchId, answer }) as unknown as Promise<import('./quick-match.models').MatchAnswerResult>;
+    this.pendingAnswerSaves.set(matchId, save);
+    void save.finally(() => {
+      // Keep a short handoff window so a newly created board component does
+      // not accept a cached pre-transaction Firestore snapshot.
+      window.setTimeout(() => {
+        if (this.pendingAnswerSaves.get(matchId) === save) this.pendingAnswerSaves.delete(matchId);
+      }, 5000);
+    }).catch(() => undefined);
+    return save;
+  }
+
+  hasPendingAnswer(matchId: string): boolean {
+    return this.pendingAnswerSaves.has(matchId);
   }
 
   async deleteMatchForTesting(matchId: string): Promise<void> {
