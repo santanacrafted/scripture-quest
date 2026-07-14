@@ -22,9 +22,12 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
     <div class="text-center text-emerald-100"><span class="block text-5xl text-amber-300">✦</span><h2 class="my-2 font-serif text-xl font-black uppercase text-amber-300">Returning to the board</h2><p>Preparing your next turn…</p></div>
   </main>
   <main class="board" *ngIf="match" style="position:relative">
-    <header style="position:absolute;top:calc(max(env(safe-area-inset-top),1.5rem) + .75rem);left:1rem;right:1rem">
-      <button (click)="back()">‹</button><span>LIGHT BATTLE</span>
+    <header style="position:absolute;z-index:9;top:calc(max(env(safe-area-inset-top),1.5rem) + .75rem);left:1rem;right:1rem">
+      <button (click)="back()">‹</button><span>LIGHT BATTLE</span><button type="button" (click)="showHelp=!showHelp" aria-label="How to play">?</button>
     </header>
+    <section *ngIf="showHelp" style="position:absolute;z-index:8;top:calc(max(env(safe-area-inset-top),1.5rem) + 4.5rem);left:1rem;right:1rem;padding:1rem;border:1px solid #9e8143;border-radius:14px;background:#fffdf6;color:#302817;box-shadow:0 10px 24px #0004;text-align:left">
+      <strong>How to play</strong><p style="margin:.5rem 0 0">Press and hold the center Spin button to build power, then release. Answer challenges to earn sparks and collect all five Lights.</p>
+    </section>
     <section class="player opponent">
       <div class="avatar">GS</div>
       <div class="info">
@@ -113,14 +116,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
       <div class="category-emblem">{{ icon(transitionCategory) }}</div>
       <p>{{ label(transitionCategory) }}</p>
       <h2>Choosing your challenge</h2>
-      <div class="type-roulette" [class.landed]="rouletteLanded">
-        <div class="roulette-ring">
-          <span *ngFor="let type of questionTypes; let i = index" [style.--slot]="i">{{ type.icon }}</span>
-        </div>
-        <div class="roulette-pointer">▼</div>
-        <strong>{{ displayedQuestionType }}</strong>
-      </div>
-      <small>{{ rouletteLanded ? 'Challenge selected' : 'Searching the battle scrolls…' }}</small>
+      <strong class="type-label" [class.found]="rouletteLanded">{{ displayedQuestionType }}</strong>
     </section>
   </main>`,
   styles: [
@@ -325,15 +321,10 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
       .category-emblem { position:relative; display:grid; width:6rem; aspect-ratio:1; place-items:center; border:3px solid #ffe59a; border-radius:50%; background:#09201dd9; box-shadow:0 0 35px var(--category-color),inset 0 0 20px #fff2; font-size:3rem; }
       .question-transition>p { position:relative; margin:.8rem 0 .15rem; color:#ffe48c; font-weight:900; letter-spacing:.16em; text-transform:uppercase; }
       .question-transition>h2 { position:relative; margin:0 0 1rem; font:900 clamp(1.55rem,7vw,2.5rem) Georgia; text-transform:uppercase; }
-      .type-roulette { position:relative; display:grid; width:min(76vw,19rem); aspect-ratio:1; place-items:center; }
-      .roulette-ring { position:absolute; inset:0; border:4px solid #f6d474; border-radius:50%; background:#071311dd; box-shadow:0 1rem 2.5rem #0008,inset 0 0 30px var(--category-color); animation:type-spin .72s linear infinite; }
-      .roulette-ring span { position:absolute; left:50%; top:50%; font-size:1.5rem; transform:rotate(calc(var(--slot) * 45deg)) translateY(-7.5rem) rotate(calc(var(--slot) * -45deg)); transform-origin:0 0; }
-      .roulette-pointer { position:absolute; z-index:2; top:-.35rem; color:#ffe078; font-size:1.7rem; filter:drop-shadow(0 2px 2px #000); }
-      .type-roulette strong { position:relative; z-index:2; display:grid; width:56%; min-height:4.5rem; place-items:center; padding:.6rem; border:2px solid #f6d474; border-radius:50%; background:#102b27; color:#fff5cf; font:900 .92rem Georgia; text-transform:uppercase; }
-      .type-roulette.landed .roulette-ring { animation:none; box-shadow:0 0 38px var(--category-color),inset 0 0 30px var(--category-color); }
-      .question-transition>small { position:relative; color:#d4e8e2; font-weight:800; }
-      @keyframes type-spin { to { transform:rotate(360deg); } }
-      @media(max-height:700px){.category-emblem{width:4.5rem;font-size:2.2rem}.type-roulette{width:min(54vh,16rem)}.roulette-ring span{transform:rotate(calc(var(--slot) * 45deg)) translateY(-6.2rem) rotate(calc(var(--slot) * -45deg));}}
+      .type-label { position:relative;display:grid;min-width:min(76vw,18rem);min-height:5rem;place-items:center;padding:1rem;border:2px solid #f6d474;border-radius:16px;background:#102b27;color:#fff5cf;box-shadow:0 1rem 2.5rem #0008,0 0 28px var(--category-color);font:900 1.2rem Georgia;text-transform:uppercase; }
+      .type-label.found { animation:type-found 1s cubic-bezier(.2,.8,.2,1); }
+      @keyframes type-found { 0%{transform:scale(.7) rotate(-8deg)}25%{transform:scale(1.18) rotate(7deg)}50%{transform:scale(.92) rotate(-5deg)}75%{transform:scale(1.08) rotate(3deg)}100%{transform:none} }
+      @media(max-height:700px){.category-emblem{width:4.5rem;font-size:2.2rem}}
 
       /* Keep the immersive board on the shared Multiplayer page canvas. */
       .board {
@@ -365,6 +356,7 @@ export class MatchBoardPage implements OnInit, OnDestroy {
   transitionCategory: MatchCategory | null = null;
   displayedQuestionType = 'Mystery challenge';
   rouletteLanded = false;
+  showHelp = false;
   syncingAnswer = false;
   private subscription?: Subscription;
   private syncFallbackTimer?: ReturnType<typeof setTimeout>;
