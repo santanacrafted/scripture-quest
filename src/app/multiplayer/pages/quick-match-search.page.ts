@@ -259,6 +259,29 @@ import { QuickMatchService } from '../quick-match.service';
         padding: 2rem clamp(2rem, 8vw, 6rem);
       }
     }
+
+    /* Share the same warm canvas used by the Multiplayer landing page. */
+    :host {
+      background: #e7e4dc;
+    }
+
+    .search-page {
+      align-items: center;
+      justify-content: center;
+      background: #e7e4dc;
+    }
+
+    .background-image,
+    .search-page::before {
+      display: none;
+    }
+
+    @media (min-width: 860px) {
+      .search-page {
+        justify-content: center;
+        padding: 2rem;
+      }
+    }
   `],
 })
 export class QuickMatchSearchPage implements OnInit, OnDestroy {

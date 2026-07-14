@@ -15,6 +15,7 @@ export interface MenuCardConfig {
   imports: [CommonModule],
   template: `
     <button
+      type="button"
       [ngClass]="getColorClasses()"
       [class.is-pressed]="isPressed"
       class="quest-menu-card group relative flex w-full flex-col justify-center overflow-hidden rounded-quest-lg py-[10px] pl-[11px] pr-1.5 text-left transition-all duration-200"
@@ -22,7 +23,8 @@ export interface MenuCardConfig {
       (pointerup)="pressEnd()"
       (pointercancel)="pressCancel()"
       (pointerleave)="pressCancel()"
-      (click)="handleClick($event)"
+      (touchend)="handleTouch($event)"
+      (click)="handleClick()"
     >
       <div class="flex min-w-0 items-center gap-2">
         <div class="flex-shrink-0">
@@ -147,7 +149,6 @@ export interface MenuCardConfig {
 export class MenuCardComponent implements OnDestroy {
   @Input() config!: MenuCardConfig;
   isPressed = false;
-  private clickTimer: ReturnType<typeof setTimeout> | null = null;
   private releaseTimer: ReturnType<typeof setTimeout> | null = null;
 
   getColorClasses(): string {
@@ -188,17 +189,17 @@ export class MenuCardComponent implements OnDestroy {
     this.isPressed = false;
   }
 
-  handleClick(event: MouseEvent): void {
+  handleClick(): void {
+    this.config.onClick();
+  }
+
+  handleTouch(event: TouchEvent): void {
     event.preventDefault();
-    this.clickTimer = setTimeout(() => {
-      this.config.onClick();
-    }, 90);
+    this.isPressed = false;
+    this.config.onClick();
   }
 
   ngOnDestroy(): void {
-    if (this.clickTimer) {
-      clearTimeout(this.clickTimer);
-    }
     this.clearReleaseTimer();
   }
 

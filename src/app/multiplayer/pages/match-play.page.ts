@@ -812,6 +812,11 @@ export class MatchPlayPage implements OnInit, OnDestroy {
     const matchId = this.match.id;
     const pendingSave = this.turnSave;
 
+    if (this.waitingForOpponent) {
+      void this.router.navigate(['/multiplayer-battle']);
+      return;
+    }
+
     // Navigation must never wait for a cold Cloud Function. The answer save
     // was already started when the player answered and safely continues after
     // this component is destroyed.

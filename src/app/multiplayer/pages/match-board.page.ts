@@ -21,10 +21,9 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
   <main *ngIf="syncingAnswer && !match" class="board !grid place-items-center" aria-live="polite">
     <div class="text-center text-emerald-100"><span class="block text-5xl text-amber-300">✦</span><h2 class="my-2 font-serif text-xl font-black uppercase text-amber-300">Returning to the board</h2><p>Preparing your next turn…</p></div>
   </main>
-  <main class="board" *ngIf="match">
-    <header>
-      <button (click)="back()">‹</button><span>LIGHT BATTLE</span
-      ><button (click)="forfeit()">⋯</button>
+  <main class="board" *ngIf="match" style="position:relative">
+    <header style="position:absolute;top:calc(max(env(safe-area-inset-top),1.5rem) + .75rem);left:1rem;right:1rem">
+      <button (click)="back()">‹</button><span>LIGHT BATTLE</span>
     </header>
     <section class="player opponent">
       <div class="avatar">GS</div>
@@ -44,15 +43,13 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
       </div>
     </section>
     <section class="arena">
-      <p class="verse">
-        “Let your light so shine before men...” <b>Matthew 5:16</b>
-      </p>
-      <div class="wheel-shell" [class.charging]="charging">
+      <div class="wheel-shell" [class.charging]="charging" [class.waiting]="!isMyTurn">
       <div class="wheel-marker">▼</div>
       <div *ngIf="charging" class="charge-feedback">
         <div class="charge-track"><i [style.width.%]="chargePercent"></i></div>
         <b>{{chargePercent >= 100 ? 'MAX POWER!' : 'HOLD TO CHARGE'}}</b>
       </div>
+      <p class="waiting-label" *ngIf="!isMyTurn" style="position:absolute;z-index:7;top:50%;left:0;width:100%;margin:0;transform:translateY(-50%);color:#000;font-size:clamp(1.2rem,5vw,1.6rem);font-weight:900;text-align:center">Waiting for opponent</p>
       <div class="wheel" [class.spinning]="spinning"
         [style.transform]="'rotate(' + wheelRotation + 'deg)'"
         [style.transition-duration.ms]="spinDuration"
@@ -66,20 +63,20 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
         >
           <span>{{ icon(c) }}</span>
         </button>
-        <div class="hub">✦</div>
+        <button class="hub" type="button" [disabled]="!isMyTurn || spinning" aria-label="Spin the wheel"
+          (pointerdown)="$event.stopPropagation(); startWheelCharge($event)"
+          (pointerup)="$event.stopPropagation(); releaseWheel($event)"
+          (pointercancel)="cancelWheelCharge()"
+          (touchstart)="$event.stopPropagation(); startWheelTouch($event)"
+          (touchend)="$event.stopPropagation(); releaseWheelTouch($event)"
+          (touchcancel)="cancelWheelCharge()"
+          (keydown.enter)="act()" (keydown.space)="$event.preventDefault(); act()"><span>✦</span><b>{{isMyTurn?'SPIN':'WAIT'}}</b></button>
       </div>
       </div>
       <div class="result" *ngIf="match.selectedCategory && !spinning">
         <span>{{ icon(match.selectedCategory) }}</span
         ><b>{{ label(match.selectedCategory) }}</b>
       </div>
-      <h2 *ngIf="!spinning">{{ statusTitle }}</h2>
-      <p *ngIf="!spinning">{{ match.lastTurnSummary }}</p>
-      <button *ngIf="!spinning" class="action" [disabled]="!isMyTurn"
-        (pointerdown)="startWheelCharge($event)" (pointerup)="releaseWheel($event)"
-        (pointercancel)="cancelWheelCharge()" (click)="act()">
-        {{ actionLabel }}
-      </button>
     </section>
     <section class="player me">
       <div class="avatar">YOU</div>
@@ -130,33 +127,31 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
     `
       :host {
         display: block;
-        background: #07100f;
+        background: #e7e4dc;
         color: #fff;
       }
       .board {
         min-height: 100svh;
-        background: radial-gradient(
-          circle at 50% 46%,
-          #276356 0,
-          #122c29 35%,
-          #07100f 75%
-        );
+        background: #e7e4dc;
         display: grid;
-        grid-template-rows: auto auto 1fr auto;
-        padding: calc(env(safe-area-inset-top) + 0.5rem) 1rem
+        grid-template-rows: auto 1fr auto;
+        align-content: stretch;
+        padding: calc(max(env(safe-area-inset-top), 1.5rem) + 4rem) 1rem
           calc(env(safe-area-inset-bottom) + 1rem);
       }
       header {
-        display: flex;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: 46px 1fr 46px;
         align-items: center;
-        color: #f5d36e;
+        color: #725d20;
         font: 900 0.8rem Georgia;
         letter-spacing: 0.2em;
       }
+      header span { text-align:center; }
+      header::after { content:''; }
       header button {
-        width: 42px;
-        height: 42px;
+        width: 46px;
+        height: 46px;
         border: 1px solid #9e8143;
         border-radius: 50%;
         background: #101817;
@@ -239,19 +234,12 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        padding: clamp(1.5rem, 5svh, 3rem) 0;
         text-align: center;
-      }
-      .verse {
-        font: italic 0.75rem Georgia;
-        color: #d5c58f;
-      }
-      .verse b {
-        display: block;
-        font-style: normal;
       }
       .wheel {
         position: relative;
-        width: min(62vw, 270px);
+        width: min(86vw, 36rem);
         aspect-ratio: 1;
         border: 8px solid #d8b15f;
         border-radius: 50%;
@@ -262,7 +250,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
           #4aa9f5 216deg 288deg,
           #f0c94a 288deg
         );
-        box-shadow: 0 0 0 5px #352711, 0 18px 45px #000b;
+        box-shadow: 0 0 0 5px #352711, 0 10px 24px #0006;
         touch-action: none;
         user-select: none;
         transition-property: transform;
@@ -272,10 +260,11 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
         pointer-events: none;
       }
       .wheel-shell { position:relative; }
+      .wheel-shell.waiting .wheel { filter:grayscale(.65); opacity:.48; }
       .wheel-marker { position:absolute; z-index:4; left:50%; top:-1.45rem; transform:translateX(-50%); color:#ffe078; font-size:2.2rem; line-height:1; filter:drop-shadow(0 3px 2px #000); }
       .wheel-shell.charging .wheel { filter:brightness(1.15); box-shadow:0 0 0 5px #352711,0 0 35px #ffd96899; }
       .charge-feedback{position:absolute;z-index:6;left:50%;bottom:-4.4rem;width:min(78vw,18rem);transform:translateX(-50%);pointer-events:none}.charge-track{height:1rem;overflow:hidden;border:2px solid #ffe18a;border-radius:1rem;background:#17140d;box-shadow:0 0 18px #f7ca55aa}.charge-track i{display:block;height:100%;background:linear-gradient(90deg,#42d39a,#f6d34e 58%,#ff5a3d);box-shadow:0 0 16px #fff;transition:width .06s linear}.charge-feedback b{display:block;margin-top:.35rem;color:#ffe17d;font-size:.74rem;letter-spacing:.14em;text-shadow:0 2px 5px #000}.wheel-shell.charging{animation:charge-rumble .12s linear infinite alternate}.wheel-shell.charging:has(.charge-track i[style*="100"]){animation-duration:.055s}@keyframes charge-rumble{from{transform:translateX(-1px)}to{transform:translateX(1px)}}
-      .wheel button {
+      .wheel > button:not(.hub) {
         position: absolute;
         inset: 0;
         width: 100%;
@@ -286,7 +275,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
         background: transparent;
         pointer-events: none;
       }
-      .wheel button span {
+      .wheel > button:not(.hub) span {
         position: absolute;
         left: 50%;
         top: 3%;
@@ -296,48 +285,26 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
       }
       .hub {
         position: absolute;
-        inset: 38%;
+        inset: 34%;
         display: grid;
         place-items: center;
         border: 4px solid #ecd17f;
         border-radius: 50%;
-        background: #173f39;
-        color: #ffd970;
-        font-size: 2rem;
+        background: radial-gradient(circle,#315f56,#102d29 70%);
+        color: #ffe078;
+        box-shadow:0 0 0 4px #173f39,0 5px 14px #0008,inset 0 0 10px #fff3;
       }
+      .hub span,.hub b { display:block; line-height:1; }
+      .hub span { font-size:1.45rem; }
+      .hub b { font-size:.58rem; letter-spacing:.08em; }
+      .charging .hub { transform:scale(.9); box-shadow:0 0 0 5px #ffe078,0 0 28px #ffd968,inset 0 0 12px #fff6; }
+      .hub:disabled { filter:grayscale(.55); opacity:.7; }
       .result {
         display: flex;
         gap: 0.4rem;
         margin-top: 0.7rem;
         align-items: center;
         color: #f7dc80;
-      }
-      .arena h2 {
-        margin: 0.35rem 0 0;
-        font: 900 1.25rem Georgia;
-        text-transform: uppercase;
-      }
-      .arena > p:not(.verse) {
-        min-height: 2.2em;
-        max-width: 24rem;
-        margin: 0.25rem;
-        color: #b9cdc7;
-        font-size: 0.78rem;
-      }
-      .action {
-        min-width: 190px;
-        min-height: 48px;
-        border: 2px solid #ffe39a;
-        border-radius: 10px;
-        background: linear-gradient(#ffe9a4, #d89e2f);
-        color: #201707;
-        font-weight: 1000;
-        text-transform: uppercase;
-        box-shadow: 0 6px 20px #0008;
-      }
-      .action:disabled {
-        filter: grayscale(1);
-        opacity: 0.55;
       }
       .question-transition {
         position: fixed;
@@ -367,6 +334,14 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
       .question-transition>small { position:relative; color:#d4e8e2; font-weight:800; }
       @keyframes type-spin { to { transform:rotate(360deg); } }
       @media(max-height:700px){.category-emblem{width:4.5rem;font-size:2.2rem}.type-roulette{width:min(54vh,16rem)}.roulette-ring span{transform:rotate(calc(var(--slot) * 45deg)) translateY(-6.2rem) rotate(calc(var(--slot) * -45deg));}}
+
+      /* Keep the immersive board on the shared Multiplayer page canvas. */
+      .board {
+        box-sizing:border-box;
+        width:min(100%,42rem);
+        margin-inline:auto;
+        box-shadow:0 12px 36px rgba(21,18,10,.18);
+      }
     `,
   ],
 })
@@ -411,6 +386,10 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     }
     this.subscription = this.service.watchMatch(id).subscribe(match => {
       if (!match || !match.playerIds.includes(this.myId) || ['cancelled', 'completed'].includes(match.status)) {
+        void this.router.navigate(['/multiplayer-battle']);
+        return;
+      }
+      if (this.match?.currentTurnPlayerId === this.myId && match.currentTurnPlayerId !== this.myId) {
         void this.router.navigate(['/multiplayer-battle']);
         return;
       }
@@ -462,9 +441,16 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     } else this.router.navigate(['/multiplayer/play', this.match.id]);
   }
   startWheelCharge(event: PointerEvent) {
-    if (!this.match || !this.isMyTurn || this.spinning || this.match.phase !== 'spin') return;
     event.preventDefault();
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    this.beginWheelCharge();
+  }
+  startWheelTouch(event: TouchEvent) {
+    event.preventDefault();
+    this.beginWheelCharge();
+  }
+  private beginWheelCharge() {
+    if (!this.match || !this.isMyTurn || this.spinning || this.charging || this.match.phase !== 'spin') return;
     this.charging = true;
     this.chargePercent = 0;
     this.chargeStartedAt = performance.now();
@@ -472,8 +458,15 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     this.runChargePulse();
   }
   releaseWheel(event: PointerEvent) {
-    if (!this.charging) return;
     event.preventDefault();
+    this.finishWheelCharge();
+  }
+  releaseWheelTouch(event: TouchEvent) {
+    event.preventDefault();
+    this.finishWheelCharge();
+  }
+  private finishWheelCharge() {
+    if (!this.charging) return;
     this.charging = false;
     clearTimeout(this.chargeTimer);
     void Haptics.selectionEnd();
@@ -616,6 +609,6 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     }
   }
   back() {
-    this.router.navigate(['/matches']);
+    this.router.navigate(['/multiplayer-battle']);
   }
 }

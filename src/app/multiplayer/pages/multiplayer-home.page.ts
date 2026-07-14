@@ -102,8 +102,8 @@ export class MultiplayerHomePage implements OnDestroy, OnInit {
       onClick: () => this.playBibleTransition(),
     },
     {
-      title: 'Multiplayer Battle',
-      description: 'Challenge friends or players in epic Bible battles.',
+      title: 'Multiplayer Bible Game',
+      description: 'Play friends or other players in an epic Bible game.',
       icon: '⚔️',
       color: 'blue-dark',
       onClick: () => this.navigateTo('/multiplayer-battle'),
