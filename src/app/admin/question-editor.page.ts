@@ -810,6 +810,11 @@ export class QuestionEditorPage implements OnInit, OnDestroy {
             correctIndex:
               Number(q.answerData.correctOptionIds[0]?.replace('o', '')) || 0,
           });
+        } else if (this.multipleChoiceQuestionTypes.includes(q.questionType) && q.answerData.type === 'text') {
+          [q.answerData.primaryAnswer, ...(q.answerData.distractors || [])]
+            .slice(0, 4)
+            .forEach((text, index) => this.options.at(index).setValue(text));
+          this.form.controls.correctIndex.setValue(0);
         }
         this.jsonText = this.stringifyQuestion(q);
       }
@@ -924,6 +929,9 @@ export class QuestionEditorPage implements OnInit, OnDestroy {
   private previewShuffle<T>(items: T[]) {
     const shuffled = [...items];
     for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
+    if (items.length > 1 && shuffled.every((item, index) => item === items[index])) {
+      return [...items.slice(1), items[0]];
+    }
     return shuffled;
   }
   private stringifyQuestion(question: Partial<StudioQuestion>) {
@@ -958,6 +966,11 @@ export class QuestionEditorPage implements OnInit, OnDestroy {
       if (q.answerData?.type === 'multiple_choice') {
         q.answerData.options.slice(0, 4).forEach((o: any, i: number) => this.options.at(i).setValue(o.text || ''));
         this.form.controls.correctIndex.setValue(Math.max(0, q.answerData.options.findIndex((o: any) => q.answerData.correctOptionIds?.includes(o.id))));
+      } else if (this.multipleChoiceQuestionTypes.includes(q.questionType) && q.answerData?.type === 'text') {
+        [q.answerData.primaryAnswer, ...(q.answerData.distractors || [])]
+          .slice(0, 4)
+          .forEach((text: string, index: number) => this.options.at(index).setValue(text));
+        this.form.controls.correctIndex.setValue(0);
       }
       this.validationErrors = [];
       return true;
@@ -973,7 +986,7 @@ export class QuestionEditorPage implements OnInit, OnDestroy {
   }
   get answerKind() {
     const t = this.form.value.questionType as ContentQuestionType;
-    if (t === 'multiple_choice' || t === 'pictionary')
+    if (this.multipleChoiceQuestionTypes.includes(t))
       return 'multiple_choice';
     if (t === 'true_false') return t;
     if (t === 'sequence' || t === 'arrange_verse') return 'sequence';
@@ -981,6 +994,10 @@ export class QuestionEditorPage implements OnInit, OnDestroy {
     if (t === 'map_challenge') return 'map';
     return 'text';
   }
+  readonly multipleChoiceQuestionTypes: ContentQuestionType[] = [
+    'multiple_choice', 'pictionary', 'verse_completion', 'who_said_it',
+    'emoji_challenge', 'odd_one_out', 'what_happens_next',
+  ];
   get categoryLabel() {
     return (
       this.categories.find((x) => x[0] === this.form.value.category)?.[1] || ''

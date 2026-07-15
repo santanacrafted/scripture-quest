@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2.0",
+  "schemaVersion": "2.1",
   "purpose": "Give this file to ChatGPT when generating Scripture Quest questions. Return only a JSON array of question objects matching the examples.",
   "allowedValues": {
     "language": ["en", "es"],
@@ -40,8 +40,8 @@
     "Pictionary, map_challenge, and emoji_challenge must use supportedModes [\"battle\"] only.",
     "Every question needs at least one structured passage with canonical bookId and bookName.",
     "chapterEnd must be greater than or equal to chapterStart.",
-    "Use answerData.type multiple_choice for multiple_choice and pictionary questions.",
-    "Multiple-choice and pictionary questions require exactly four unique options and exactly one correctOptionId.",
+    "Use answerData.type multiple_choice for multiple_choice, pictionary, verse_completion, who_said_it, emoji_challenge, odd_one_out, and what_happens_next questions.",
+    "Those multiple-choice question types require exactly four unique options and exactly one correctOptionId. Players select an option; they do not type an answer.",
     "Pictionary requires media. Replace all placeholder media values with a real uploaded Firebase Storage path and download URL before publishing.",
     "Map challenges require media and a correctRegionId matching an interactive region in the map asset.",
     "Sequence correctPosition values must start at 0 and be consecutive.",
@@ -111,7 +111,7 @@
       "passages": [{ "bookId": "psalms", "bookName": "Psalms", "chapterStart": 23, "chapterEnd": 23, "verseStart": 1, "verseEnd": 1 }],
       "topics": ["trust", "provision"],
       "tags": ["Psalm 23", "shepherd"],
-      "answerData": { "type": "text", "primaryAnswer": "want", "acceptedAnswers": [], "distractors": ["fear", "wander", "fall"], "caseSensitive": false }
+      "answerData": { "type": "multiple_choice", "options": [{ "id": "o0", "text": "want" }, { "id": "o1", "text": "fear" }, { "id": "o2", "text": "wander" }, { "id": "o3", "text": "fall" }], "correctOptionIds": ["o0"] }
     },
     {
       "externalId": "example-reference-match-001",
@@ -162,7 +162,7 @@
       "passages": [{ "bookId": "isaiah", "bookName": "Isaiah", "chapterStart": 6, "chapterEnd": 6, "verseStart": 8, "verseEnd": 8 }],
       "topics": ["calling"],
       "tags": ["Isaiah", "prophets"],
-      "answerData": { "type": "text", "primaryAnswer": "Isaiah", "acceptedAnswers": ["the prophet Isaiah"], "distractors": ["Jeremiah", "Samuel", "Ezekiel"], "caseSensitive": false }
+      "answerData": { "type": "multiple_choice", "options": [{ "id": "o0", "text": "Isaiah" }, { "id": "o1", "text": "Jeremiah" }, { "id": "o2", "text": "Samuel" }, { "id": "o3", "text": "Ezekiel" }], "correctOptionIds": ["o0"] }
     },
     {
       "externalId": "example-sequence-001",
@@ -214,7 +214,7 @@
       "passages": [{ "bookId": "genesis", "bookName": "Genesis", "chapterStart": 6, "chapterEnd": 9 }],
       "topics": ["covenant", "obedience"],
       "tags": ["Noah", "ark", "flood"],
-      "answerData": { "type": "text", "primaryAnswer": "Noah's ark", "acceptedAnswers": ["Noah and the flood", "the flood"], "distractors": ["Jonah and the fish", "Crossing the Red Sea", "Jesus calms the storm"], "caseSensitive": false }
+      "answerData": { "type": "multiple_choice", "options": [{ "id": "o0", "text": "Noah's ark" }, { "id": "o1", "text": "Jonah and the fish" }, { "id": "o2", "text": "Crossing the Red Sea" }, { "id": "o3", "text": "Jesus calms the storm" }], "correctOptionIds": ["o0"] }
     },
     {
       "externalId": "example-true-false-001",
@@ -265,7 +265,7 @@
       "passages": [{ "bookId": "matthew", "bookName": "Matthew", "chapterStart": 1, "chapterEnd": 28 }, { "bookId": "romans", "bookName": "Romans", "chapterStart": 1, "chapterEnd": 16 }],
       "topics": ["Bible books", "Gospels"],
       "tags": ["New Testament"],
-      "answerData": { "type": "text", "primaryAnswer": "Romans", "acceptedAnswers": [], "distractors": ["Matthew", "Mark", "Luke"], "caseSensitive": false }
+      "answerData": { "type": "multiple_choice", "options": [{ "id": "o0", "text": "Romans" }, { "id": "o1", "text": "Matthew" }, { "id": "o2", "text": "Mark" }, { "id": "o3", "text": "Luke" }], "correctOptionIds": ["o0"] }
     },
     {
       "externalId": "example-what-happens-next-001",
@@ -282,7 +282,7 @@
       "passages": [{ "bookId": "1-samuel", "bookName": "1 Samuel", "chapterStart": 17, "chapterEnd": 17, "verseStart": 49, "verseEnd": 51 }],
       "topics": ["courage", "victory"],
       "tags": ["David", "Goliath"],
-      "answerData": { "type": "text", "primaryAnswer": "Goliath fell face down to the ground", "acceptedAnswers": ["Goliath fell"], "distractors": ["Goliath ran away", "Saul stopped the battle", "David returned to Bethlehem"], "caseSensitive": false }
+      "answerData": { "type": "multiple_choice", "options": [{ "id": "o0", "text": "Goliath fell face down to the ground" }, { "id": "o1", "text": "Goliath ran away" }, { "id": "o2", "text": "Saul stopped the battle" }, { "id": "o3", "text": "David returned to Bethlehem" }], "correctOptionIds": ["o0"] }
     },
     {
       "externalId": "example-arrange-verse-001",

@@ -76,7 +76,8 @@ import { QuestionRepository } from './question.repository';
         <code>supported_modes</code> is required and accepts quiz, battle, or quiz|battle.
         Use <code>scope_definition</code> like <code>Daniel:2,5; Revelation:2-3</code>.
         JSON imports must provide a structured <code>passages</code> array. Complex answers can use <code>answer_data_json</code>. Every imported
-        pictionary question must have four multiple-choice options and image media with
+        verse completion, who said it, emoji challenge, odd one out, what happens next,
+        and pictionary questions must have four multiple-choice options. Pictionary also requires image media with
         <code>storagePath</code>, <code>downloadUrl</code>, and <code>altText</code>.
       </p>
     </aside>`,

@@ -117,10 +117,11 @@ export class ImportService {
           altText: raw['media_alt_text'],
         }
       : undefined;
-    if (type === 'pictionary' && answer.type !== 'multiple_choice')
-      issues.push({ severity: 'error', message: 'Pictionary requires multiple-choice answerData.' });
+    const multipleChoiceTypes: ContentQuestionType[] = ['multiple_choice', 'pictionary', 'verse_completion', 'who_said_it', 'emoji_challenge', 'odd_one_out', 'what_happens_next'];
+    if (multipleChoiceTypes.includes(type) && answer.type !== 'multiple_choice')
+      issues.push({ severity: 'error', message: 'This question type requires multiple-choice answerData.' });
     if (
-      ['multiple_choice', 'pictionary'].includes(type) &&
+      multipleChoiceTypes.includes(type) &&
       answer.type === 'multiple_choice'
     ) {
       if (answer.options.length !== 4)
@@ -180,7 +181,7 @@ export class ImportService {
         });
       }
     }
-    if (type === 'multiple_choice' || type === 'pictionary') {
+    if (['multiple_choice', 'pictionary', 'verse_completion', 'who_said_it', 'emoji_challenge', 'odd_one_out', 'what_happens_next'].includes(type)) {
       const values = ['option_a', 'option_b', 'option_c', 'option_d'].map(
         (k) => r[k] || ''
       );

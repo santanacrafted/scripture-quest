@@ -18,13 +18,14 @@ type BattleTab = 'active' | 'friends' | 'history';
   template: `
     <main class="multiplayer-page" style="height:100svh;overflow:hidden;box-sizing:border-box;display:grid;grid-template-rows:auto minmax(0,1fr)">
       <div class="toast" *ngIf="message" role="status" aria-live="polite">{{message}}</div>
-      <header class="page-header">
-        <a *ngIf="isAdmin" routerLink="/multiplayer/admin-test" class="tester">🧪 Wheel tester</a>
-      </header>
+      <header class="page-header"><strong class="app-name">Scripture Quest</strong></header>
 
       <section class="battle-workspace" style="min-height:0;display:grid;grid-template-rows:auto auto auto minmax(0,1fr)">
         <div class="intro"><p>MULTIPLAYER</p><h1>Bible Game</h1><span>Continue a match or play a friend.</span></div>
-        <button class="quick-match" type="button" (click)="startQuickMatch()"><span>⚔️</span><div><b>Quick Match</b><small>Find an opponent instantly</small></div><i>›</i></button>
+        <div class="quick-actions">
+          <button class="quick-match" type="button" (click)="startQuickMatch()"><span>⚔️</span><div><b>Quick Match</b><small>Find an opponent instantly</small></div><i>›</i></button>
+          <a *ngIf="isAdmin" routerLink="/multiplayer/admin-test" class="tester" aria-label="Open admin wheel tester" title="Admin wheel tester">🧪</a>
+        </div>
         <nav class="tabs" aria-label="Multiplayer sections">
           <button type="button" [class.active]="tab==='active'" (click)="tab='active'">Ongoing <b>{{activeCount}}</b></button>
           <button type="button" [class.active]="tab==='friends'" (click)="tab='friends'">Friends <b>{{friends.length}}</b></button>
@@ -57,6 +58,8 @@ type BattleTab = 'active' | 'friends' | 'history';
     .friend-actions .challenge{position:relative;overflow:hidden;min-width:68px;border:1px solid #332415;background:linear-gradient(180deg,#513372,#3a2355);box-shadow:inset 0 1px 0 rgba(255,244,196,.24),inset 0 0 0 1px rgba(245,197,93,.76),inset 0 0 0 3px rgba(20,13,7,.48),0 3px 7px rgba(0,0,0,.25);color:#fff}.friend-actions .challenge::before{content:'';position:absolute;inset:4px;border:1px solid rgba(255,218,128,.32);border-radius:5px;pointer-events:none}.friend-actions .challenge::after{content:'';position:absolute;inset:5px;border-radius:4px;pointer-events:none;background:linear-gradient(#f1c663,#f1c663) left top/9px 1px no-repeat,linear-gradient(#f1c663,#f1c663) left top/1px 9px no-repeat,linear-gradient(#f1c663,#f1c663) right top/9px 1px no-repeat,linear-gradient(#f1c663,#f1c663) right top/1px 9px no-repeat,linear-gradient(#f1c663,#f1c663) left bottom/9px 1px no-repeat,linear-gradient(#f1c663,#f1c663) left bottom/1px 9px no-repeat,linear-gradient(#f1c663,#f1c663) right bottom/9px 1px no-repeat,linear-gradient(#f1c663,#f1c663) right bottom/1px 9px no-repeat;opacity:.72}.friend-actions .challenge:hover{background:linear-gradient(180deg,#604082,#49306a)}.friend-actions .challenge:active{transform:translateY(1px);background:#34204d}
     .quick-match{grid-template-columns:2.8rem 1fr auto;min-height:66px;margin:.9rem 0;padding:.55rem .85rem;border-radius:16px}.quick-match span{width:2.6rem;height:2.6rem;font-size:1.3rem}.quick-match b{font-size:.98rem}.quick-match small{margin-top:.08rem;font-size:.7rem}.quick-match i{font-size:1.8rem}
     .page-header{min-height:4.75rem}
+    .quick-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:.4rem}.quick-actions .quick-match{margin:.9rem 0}.quick-actions .tester{display:grid!important;width:38px;height:38px;box-sizing:border-box;place-items:center;padding:0;border:1px solid #332415;border-radius:10px;background:linear-gradient(180deg,#513372,#3a2355);box-shadow:inset 0 0 0 2px #241334,inset 0 0 0 3px #8c6a37,0 5px 12px #2d183c45;color:#fff;font-size:.9rem;line-height:1;text-decoration:none}
+    .multiplayer-page{padding-top:calc(max(env(safe-area-inset-top),1.5rem) + .75rem)}.page-header{height:46px;min-height:46px;align-items:center;justify-content:flex-start}.app-name{display:flex;height:46px;align-items:center;color:#173f38;font:900 1.05rem Georgia,'Times New Roman',serif;letter-spacing:.08em;text-transform:uppercase}
   `]
 })
 export class MultiplayerBattlePage implements OnInit,OnDestroy{

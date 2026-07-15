@@ -254,7 +254,7 @@ export class QuestionService {
       choices = [correct, ...(answer.distractors || [])];
     } else if (answer.type === 'sequence') {
       const ordered = [...(answer.items || [])].sort((a: any, b: any) => a.correctPosition - b.correctPosition);
-      choices = ordered.map((item: any) => item.text).sort(() => Math.random() - .5);
+      choices = this.shuffleAwayFromOrder(ordered.map((item: any) => item.text));
       correct = JSON.stringify(ordered.map((item: any) => String(item.text).trim()));
     } else if (answer.type === 'match_pairs') {
       const pairs = answer.pairs || [];
@@ -291,12 +291,44 @@ export class QuestionService {
       explanation: data.explanation || '',
       media,
     } as Question;
-    if (answer.type === 'match_pairs') result.matchPairs = {
-      left: (answer.pairs || []).map((pair: any) => pair.left).sort(() => Math.random() - .5),
-      right: (answer.pairs || []).map((pair: any) => pair.right).sort(() => Math.random() - .5),
-    };
-    if (answer.type === 'arrange_verse') result.verseSegments = (answer.segments || []).map((segment: any) => ({ id: segment.id, text: segment.text })).sort(() => Math.random() - .5);
+    if (answer.type === 'match_pairs') result.matchPairs = this.scrambledPairColumns(answer.pairs || []);
+    if (answer.type === 'arrange_verse') {
+      const orderedSegments = [...(answer.segments || [])]
+        .sort((left: any, right: any) => left.correctPosition - right.correctPosition)
+        .map((segment: any) => ({ id: segment.id, text: segment.text }));
+      result.verseSegments = this.shuffleAwayFromOrder(orderedSegments, segment => segment.id);
+    }
     return result;
+  }
+
+  private shuffle<T>(items: T[]): T[] {
+    const shuffled = [...items];
+    for (let index = shuffled.length - 1; index > 0; index--) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+    }
+    return shuffled;
+  }
+
+  private shuffleAwayFromOrder<T>(items: T[], key: (item: T) => unknown = item => item): T[] {
+    if (items.length < 2) return [...items];
+    const shuffled = this.shuffle(items);
+    return shuffled.every((item, index) => key(item) === key(items[index]))
+      ? [...items.slice(1), items[0]]
+      : shuffled;
+  }
+
+  private scrambledPairColumns(pairs: Array<{ left: string; right: string }>): { left: string[]; right: string[] } {
+    const displayedPairs = this.shuffle(pairs);
+    if (displayedPairs.length < 2) {
+      return { left: displayedPairs.map(pair => pair.left), right: displayedPairs.map(pair => pair.right) };
+    }
+    const correctRights = displayedPairs.map(pair => pair.right);
+    const offset = 1 + Math.floor(Math.random() * (correctRights.length - 1));
+    return {
+      left: displayedPairs.map(pair => pair.left),
+      right: correctRights.map((_, index) => correctRights[(index + offset) % correctRights.length]),
+    };
   }
   getQuestionById(id: string) {
     return this.questions.find((q) => q.id === id);

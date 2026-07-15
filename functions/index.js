@@ -496,6 +496,7 @@ const CONTENT_TYPES = ['multiple_choice','pictionary','verse_completion','refere
 const CONTENT_DIFFICULTIES = ['easy','medium','hard','expert'];
 const CONTENT_SCOPES = ['chapter','book','multi_book','whole_bible'];
 const CONTENT_SUPPORTED_MODES = ['quiz','battle'];
+const MULTIPLE_CHOICE_CONTENT_TYPES = ['multiple_choice','pictionary','verse_completion','who_said_it','emoji_challenge','odd_one_out','what_happens_next'];
 function validateContentQuestion(question, publishing = false) {
   const errors = [];
   if (!CONTENT_CATEGORIES.includes(question?.category)) errors.push('Invalid category.');
@@ -509,7 +510,7 @@ function validateContentQuestion(question, publishing = false) {
   if (!['en','es'].includes(question?.language)) errors.push('Invalid language.');
   if (typeof question?.prompt !== 'string' || question.prompt.trim().length < 10 || question.prompt.length > 500) errors.push('Prompt must contain 10–500 characters.');
   if (!question?.answerData?.type) errors.push('Answer configuration is required.');
-  if (['multiple_choice', 'pictionary'].includes(question?.questionType)) {
+  if (MULTIPLE_CHOICE_CONTENT_TYPES.includes(question?.questionType)) {
     const options = question.answerData?.options || [];
     if (question.answerData?.type !== 'multiple_choice') errors.push('This question type requires multiple-choice answer data.');
     if (options.length !== 4) errors.push('Multiple choice requires four options.');
@@ -963,6 +964,38 @@ function assertMatchTurn(match, playerId, phase) {
   }
 }
 
+function shuffle(items) {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
+}
+
+function shuffleAwayFromOrder(items, key = (item) => item) {
+  if (items.length < 2) return [...items];
+  const shuffled = shuffle(items);
+  const unchanged = shuffled.every((item, index) => key(item) === key(items[index]));
+  return unchanged ? [...items.slice(1), items[0]] : shuffled;
+}
+
+function scrambledPairColumns(pairs) {
+  const displayedPairs = shuffle(pairs);
+  if (displayedPairs.length < 2) {
+    return {
+      left: displayedPairs.map((pair) => pair.left),
+      right: displayedPairs.map((pair) => pair.right),
+    };
+  }
+  const correctRights = displayedPairs.map((pair) => pair.right);
+  const offset = 1 + Math.floor(Math.random() * (correctRights.length - 1));
+  return {
+    left: displayedPairs.map((pair) => pair.left),
+    right: correctRights.map((_, index) => correctRights[(index + offset) % correctRights.length]),
+  };
+}
+
 function publicMatchQuestion(id, question, questionPool = []) {
   const answer = question.answerData || {};
   let choices = [];
@@ -970,22 +1003,20 @@ function publicMatchQuestion(id, question, questionPool = []) {
   else if (answer.type === 'sequence') {
     choices = [...(answer.items || [])]
       .sort((left, right) => left.correctPosition - right.correctPosition)
-      .map((item) => item.text)
-      .sort(() => Math.random() - 0.5);
+      .map((item) => item.text);
+    choices = shuffleAwayFromOrder(choices);
     return { id, text: question.prompt, choices, questionType: question.questionType, difficulty: question.difficulty };
   }
   else if (answer.type === 'match_pairs') {
     const pairs = answer.pairs || [];
+    const matchPairs = scrambledPairColumns(pairs);
     return {
       id,
       text: question.prompt,
       choices: [],
       questionType: question.questionType,
       difficulty: question.difficulty,
-      matchPairs: {
-        left: pairs.map((pair) => pair.left).sort(() => Math.random() - 0.5),
-        right: pairs.map((pair) => pair.right).sort(() => Math.random() - 0.5),
-      },
+      matchPairs,
     };
   }
   else if (answer.type === 'arrange_verse') {
@@ -995,9 +1026,12 @@ function publicMatchQuestion(id, question, questionPool = []) {
       choices: [],
       questionType: question.questionType,
       difficulty: question.difficulty,
-      verseSegments: [...(answer.segments || [])]
-        .map((segment) => ({ id: segment.id, text: segment.text }))
-        .sort(() => Math.random() - 0.5),
+      verseSegments: shuffleAwayFromOrder(
+        [...(answer.segments || [])]
+          .sort((left, right) => left.correctPosition - right.correctPosition)
+          .map((segment) => ({ id: segment.id, text: segment.text })),
+        (segment) => segment.id,
+      ),
     };
   }
   else if (answer.type === 'true_false') {
