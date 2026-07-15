@@ -25,6 +25,8 @@ const MAX_SIMULTANEOUS_QUICK_MATCHES = 5;
 const CANDIDATE_LIMIT = 30;
 const EXPIRE_BATCH_LIMIT = 100;
 const QUESTION_HISTORY_LIMIT = 500;
+const MATCH_DIFFICULTIES = ['beginner', 'disciple', 'scholar', 'mixed'];
+const DIFFICULTY_PREFERENCES = [...MATCH_DIFFICULTIES, 'any'];
 // Bootstrap allowlist only. Access to admin data is always enforced with the
 // signed Firebase ID token's `admin` custom claim.
 const CONTENT_ADMIN_EMAILS = new Set([
@@ -56,12 +58,12 @@ exports.createMatch = functions.https.onCall(requireAuth(async (data, context) =
   inviteCode: data?.inviteCode ?? null,
 })));
 
-exports.joinRandomMatch = functions.https.onCall(requireAuth(async (_data, context) => {
-  return joinOrAttemptQuickMatch(context.auth.uid);
+exports.joinRandomMatch = functions.https.onCall(requireAuth(async (data, context) => {
+  return joinOrAttemptQuickMatch(context.auth.uid, normalizeDifficultyPreference(data?.difficultyPreference));
 }));
 
-exports.joinQuickMatchQueue = functions.https.onCall(requireAuth(async (_data, context) => {
-  return joinOrAttemptQuickMatch(context.auth.uid);
+exports.joinQuickMatchQueue = functions.https.onCall(requireAuth(async (data, context) => {
+  return joinOrAttemptQuickMatch(context.auth.uid, normalizeDifficultyPreference(data?.difficultyPreference));
 }));
 
 exports.attemptQuickMatch = functions.https.onCall(requireAuth(async (data, context) => {
@@ -315,7 +317,8 @@ exports.spinMatchWheel = functions.https.onCall(requireAuth(async (data, context
   const playableQuestions = questions.docs.filter((doc) =>
     doc.get('status') === 'published' &&
     doc.get('isActive') === true &&
-    (doc.get('supportedModes') || []).includes('battle')
+    (doc.get('supportedModes') || []).includes('battle') &&
+    questionMatchesDifficulty(doc.get('difficulty'), matchBeforeSpin.get('difficulty') || 'mixed')
   );
   if (!playableQuestions.length) throw new functions.https.HttpsError('failed-precondition', 'No published questions are available for this category.');
   const historySnapshot = await db.collection(USER_COLLECTION).doc(context.auth.uid)
@@ -604,8 +607,8 @@ exports.bulkImportQuestions = functions.https.onCall(requireAdmin(async (data, c
   functions.logger.info('content_questions_imported',{actorId:context.auth.uid,count:imported,published:publish});return{imported,published:publish};
 }));
 
-async function joinOrAttemptQuickMatch(playerId) {
-  return joinAsyncQuickMatch(playerId);
+async function joinOrAttemptQuickMatch(playerId, difficultyPreference = 'any') {
+  return joinAsyncQuickMatch(playerId, difficultyPreference);
   /* Legacy simultaneous-search implementation retained temporarily for
      already deployed clients; new clients use the asynchronous match queue. */
   const profile = await loadAuthoritativeProfile(playerId);
@@ -657,7 +660,7 @@ async function joinOrAttemptQuickMatch(playerId) {
   return attemptQuickMatchForPlayer(playerId, joinResult.searchToken);
 }
 
-async function joinAsyncQuickMatch(playerId) {
+async function joinAsyncQuickMatch(playerId, difficultyPreference) {
   const profile = await loadAuthoritativeProfile(playerId);
   const playerMatches = await db.collection(MATCH_COLLECTION)
     .where('playerIds', 'array-contains', playerId)
@@ -678,6 +681,7 @@ async function joinAsyncQuickMatch(playerId) {
     .get();
   const waiting = waitingSnapshot.docs
     .filter((doc) => doc.get('mode') === MODE)
+    .filter((doc) => difficultyPreference === 'any' || doc.get('difficulty') === difficultyPreference)
     .sort((left, right) => (left.get('updatedAt')?.toMillis?.() || 0) - (right.get('updatedAt')?.toMillis?.() || 0))
     .slice(0, CANDIDATE_LIMIT);
 
@@ -687,6 +691,7 @@ async function joinAsyncQuickMatch(playerId) {
       if (!snapshot.exists) return null;
       const match = snapshot.data();
       if (match.status !== 'waiting_for_opponent' || match.mode !== MODE || match.playerIds.length !== 1 || match.playerIds.includes(playerId)) return null;
+      if (difficultyPreference !== 'any' && match.difficulty !== difficultyPreference) return null;
       const hostId = match.playerIds[0];
       transaction.update(candidate.ref, {
         status: 'active',
@@ -702,8 +707,9 @@ async function joinAsyncQuickMatch(playerId) {
       return candidate.id;
     });
     if (joined) {
-      await setMatchedQueueEntry(playerId, profile, joined);
-      return { status: 'matched', matchId: joined, searchToken: createSearchToken() };
+      const matchedSearchToken = createSearchToken();
+      await setMatchedQueueEntry(playerId, profile, joined, matchedSearchToken, difficultyPreference);
+      return { status: 'matched', matchId: joined, searchToken: matchedSearchToken };
     }
   }
 
@@ -712,6 +718,7 @@ async function joinAsyncQuickMatch(playerId) {
   const createdAt = FieldValue.serverTimestamp();
   await matchRef.set({
     id: matchRef.id, mode: MODE, status: 'active', isAsynchronous: true,
+    difficulty: difficultyPreference === 'any' ? 'mixed' : difficultyPreference,
     createdAt, updatedAt: createdAt, currentTurnPlayerId: playerId,
     phase: 'spin', selectedCategory: null, currentQuestion: null,
     lastTurnSummary: 'Take your turn. If it passes, another explorer can join.',
@@ -719,17 +726,17 @@ async function joinAsyncQuickMatch(playerId) {
     players: { [playerId]: buildMatchPlayer(profile) },
     matchmaking: { ratingDifference: 0, searchDurationMs: 0, source: 'live-queue' },
   });
-  await setMatchedQueueEntry(playerId, profile, matchRef.id, searchToken);
+  await setMatchedQueueEntry(playerId, profile, matchRef.id, searchToken, difficultyPreference);
   return { status: 'matched', matchId: matchRef.id, searchToken };
 }
 
-async function setMatchedQueueEntry(playerId, profile, matchId, searchToken = createSearchToken()) {
+async function setMatchedQueueEntry(playerId, profile, matchId, searchToken = createSearchToken(), difficultyPreference = 'any') {
   await db.collection(QUEUE_COLLECTION).doc(playerId).set({
     playerId, status: 'matched', mode: MODE, rating: profile.rating, level: profile.level,
     region: profile.region, language: profile.language, displayName: profile.displayName,
     username: profile.username, avatarUrl: profile.avatarUrl, createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + QUEUE_TTL_MS),
-    matchId, searchToken,
+    matchId, searchToken, difficultyPreference,
   });
 }
 
@@ -920,6 +927,7 @@ function buildMatch(matchId, playerOne, playerTwo, source, ratingDifference) {
     mode: MODE,
     status: 'active',
     isAsynchronous: true,
+    difficulty: playerOne.difficultyPreference === 'any' ? 'mixed' : (playerOne.difficultyPreference || 'mixed'),
     createdAt,
     updatedAt: createdAt,
     currentTurnPlayerId: playerOneId,
@@ -1145,6 +1153,29 @@ function requireString(value, name) {
   return value;
 }
 
+function normalizeDifficultyPreference(value) {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : 'any';
+  if (!DIFFICULTY_PREFERENCES.includes(normalized)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid battle difficulty.');
+  }
+  return normalized;
+}
+
+function normalizeMatchDifficulty(value) {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : 'mixed';
+  if (!MATCH_DIFFICULTIES.includes(normalized)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid battle difficulty.');
+  }
+  return normalized;
+}
+
+function questionMatchesDifficulty(questionDifficulty, matchDifficulty) {
+  if (matchDifficulty === 'mixed') return true;
+  if (matchDifficulty === 'beginner') return questionDifficulty === 'easy';
+  if (matchDifficulty === 'disciple') return questionDifficulty === 'medium';
+  return ['hard', 'expert'].includes(questionDifficulty);
+}
+
 function createSearchToken() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 }
@@ -1164,8 +1195,8 @@ exports.removeFriend=functions.https.onCall(requireAuth(async(data,context)=>{co
 exports.blockPlayer=functions.https.onCall(requireAuth(async(data,context)=>{const a=context.auth.uid,b=requireString(data?.userId,'userId');if(a===b)throw new functions.https.HttpsError('invalid-argument','You cannot block yourself.');const batch=db.batch();batch.set(db.doc(`${BLOCKS}/${blockId(a,b)}`),{blockerId:a,blockedUserId:b,createdAt:FieldValue.serverTimestamp()});batch.delete(db.doc(`${FRIENDSHIPS}/${pairId(a,b)}`));for(const col of [FRIEND_REQUESTS,INVITATIONS]){const field=col===FRIEND_REQUESTS?'status':'status';const snap=await db.collection(col).where('participantIds','array-contains',a).where(field,'==','pending').get().catch(()=>({docs:[]}));snap.docs.filter(d=>{const x=d.data();return [x.senderId,x.recipientId,x.challengerId].includes(b)}).forEach(d=>batch.update(d.ref,{status:'cancelled',updatedAt:FieldValue.serverTimestamp()}));}await batch.commit();functions.logger.info('player_blocked',{blockerId:a,blockedUserId:b});return{status:'blocked'};}));
 exports.unblockPlayer=functions.https.onCall(requireAuth(async(data,context)=>{await db.doc(`${BLOCKS}/${blockId(context.auth.uid,requireString(data?.userId,'userId'))}`).delete();return{status:'unblocked'};}));
 
-exports.sendFriendBattleInvitation=functions.https.onCall(requireAuth(async(data,context)=>{const challengerId=context.auth.uid,recipientId=requireString(data?.recipientId,'recipientId'),rounds=Number(data?.rounds);if(challengerId===recipientId)throw new functions.https.HttpsError('invalid-argument','You cannot challenge yourself.');if(!SOCIAL_LIMITS.allowedRounds.includes(rounds))throw new functions.https.HttpsError('invalid-argument','Invalid round count.');await assertNotBlocked(challengerId,recipientId);if(!(await db.doc(`${FRIENDSHIPS}/${pairId(challengerId,recipientId)}`).get()).exists)throw new functions.https.HttpsError('failed-precondition','Only friends can be challenged.');const [a,b,pending]=await Promise.all([db.doc(`${USER_COLLECTION}/${challengerId}`).get(),db.doc(`${USER_COLLECTION}/${recipientId}`).get(),db.collection(INVITATIONS).where('challengerId','==',challengerId).where('status','==','pending').limit(SOCIAL_LIMITS.maxPendingInvitations+1).get()]);if(!a.exists||!b.exists||!eligible(a.data())||!eligible(b.data())||b.data().friendChallengesEnabled===false)throw new functions.https.HttpsError('failed-precondition','This player cannot receive challenges.');if(pending.size>=SOCIAL_LIMITS.maxPendingInvitations)throw new functions.https.HttpsError('resource-exhausted','Too many pending invitations.');const id=pairId(challengerId,recipientId),ref=db.doc(`${INVITATIONS}/${id}`);return db.runTransaction(async t=>{const s=await t.get(ref);if(s.exists&&s.data().status==='pending'&&s.data().expiresAt.toMillis()>Date.now())throw new functions.https.HttpsError('already-exists','A challenge is already pending.');t.set(ref,{challengerId,recipientId,participantIds:[challengerId,recipientId],type:'friend-battle',status:'pending',rounds,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+SOCIAL_LIMITS.invitationTtlMs),respondedAt:null,matchId:null,challengeToken:createSearchToken(),challenger:safeProfile(challengerId,a.data()),recipient:safeProfile(recipientId,b.data())});functions.logger.info('battle_invitation_sent',{invitationId:id,challengerId,recipientId});return{status:'pending',invitationId:id};});}));
-exports.respondToBattleInvitation=functions.https.onCall(requireAuth(async(data,context)=>{const id=requireString(data?.invitationId,'invitationId'),action=data?.action;if(!['accept','decline'].includes(action))throw new functions.https.HttpsError('invalid-argument','Invalid action.');return db.runTransaction(async t=>{const ref=db.doc(`${INVITATIONS}/${id}`),s=await t.get(ref);if(!s.exists)throw new functions.https.HttpsError('not-found','Invitation not found.');const i=s.data();if(i.recipientId!==context.auth.uid)throw new functions.https.HttpsError('permission-denied','Only the recipient may respond.');if(i.status==='accepted'&&i.matchId)return{status:'accepted',matchId:i.matchId};if(i.status!=='pending'||i.expiresAt.toMillis()<=Date.now())throw new functions.https.HttpsError('failed-precondition','Invitation is no longer available.');if(action==='decline'){t.update(ref,{status:'declined',updatedAt:FieldValue.serverTimestamp(),respondedAt:FieldValue.serverTimestamp()});return{status:'declined',matchId:null};}const friendship=await t.get(db.doc(`${FRIENDSHIPS}/${pairId(i.challengerId,i.recipientId)}`));if(!friendship.exists)throw new functions.https.HttpsError('failed-precondition','Players are no longer friends.');const matchId=`friend_${id}`,matchRef=db.doc(`${MATCH_COLLECTION}/${matchId}`),existing=await t.get(matchRef);if(!existing.exists)t.set(matchRef,{id:matchId,mode:'friend-battle',status:'lobby',playerIds:i.participantIds,hostPlayerId:i.challengerId,invitationId:id,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp(),startedAt:null,completedAt:null,roundNumber:1,totalRounds:i.rounds,currentTurnPlayerId:null,players:{[i.challengerId]:{...i.challenger,ready:false,joinedLobbyAt:null,score:0,status:'invited'},[i.recipientId]:{...i.recipient,ready:false,joinedLobbyAt:FieldValue.serverTimestamp(),score:0,status:'joined'}}});t.update(ref,{status:'accepted',matchId,updatedAt:FieldValue.serverTimestamp(),respondedAt:FieldValue.serverTimestamp()});functions.logger.info('friend_battle_lobby_created',{matchId,invitationId:id});return{status:'accepted',matchId};});}));
+exports.sendFriendBattleInvitation=functions.https.onCall(requireAuth(async(data,context)=>{const challengerId=context.auth.uid,recipientId=requireString(data?.recipientId,'recipientId'),rounds=Number(data?.rounds),difficulty=normalizeMatchDifficulty(data?.difficulty);if(challengerId===recipientId)throw new functions.https.HttpsError('invalid-argument','You cannot challenge yourself.');if(!SOCIAL_LIMITS.allowedRounds.includes(rounds))throw new functions.https.HttpsError('invalid-argument','Invalid round count.');await assertNotBlocked(challengerId,recipientId);if(!(await db.doc(`${FRIENDSHIPS}/${pairId(challengerId,recipientId)}`).get()).exists)throw new functions.https.HttpsError('failed-precondition','Only friends can be challenged.');const [a,b,pending]=await Promise.all([db.doc(`${USER_COLLECTION}/${challengerId}`).get(),db.doc(`${USER_COLLECTION}/${recipientId}`).get(),db.collection(INVITATIONS).where('challengerId','==',challengerId).where('status','==','pending').limit(SOCIAL_LIMITS.maxPendingInvitations+1).get()]);if(!a.exists||!b.exists||!eligible(a.data())||!eligible(b.data())||b.data().friendChallengesEnabled===false)throw new functions.https.HttpsError('failed-precondition','This player cannot receive challenges.');if(pending.size>=SOCIAL_LIMITS.maxPendingInvitations)throw new functions.https.HttpsError('resource-exhausted','Too many pending invitations.');const id=pairId(challengerId,recipientId),ref=db.doc(`${INVITATIONS}/${id}`);return db.runTransaction(async t=>{const s=await t.get(ref);if(s.exists&&s.data().status==='pending'&&s.data().expiresAt.toMillis()>Date.now())throw new functions.https.HttpsError('already-exists','A challenge is already pending.');t.set(ref,{challengerId,recipientId,participantIds:[challengerId,recipientId],type:'friend-battle',status:'pending',rounds,difficulty,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp(),expiresAt:Timestamp.fromMillis(Date.now()+SOCIAL_LIMITS.invitationTtlMs),respondedAt:null,matchId:null,challengeToken:createSearchToken(),challenger:safeProfile(challengerId,a.data()),recipient:safeProfile(recipientId,b.data())});functions.logger.info('battle_invitation_sent',{invitationId:id,challengerId,recipientId});return{status:'pending',invitationId:id};});}));
+exports.respondToBattleInvitation=functions.https.onCall(requireAuth(async(data,context)=>{const id=requireString(data?.invitationId,'invitationId'),action=data?.action;if(!['accept','decline'].includes(action))throw new functions.https.HttpsError('invalid-argument','Invalid action.');return db.runTransaction(async t=>{const ref=db.doc(`${INVITATIONS}/${id}`),s=await t.get(ref);if(!s.exists)throw new functions.https.HttpsError('not-found','Invitation not found.');const i=s.data();if(i.recipientId!==context.auth.uid)throw new functions.https.HttpsError('permission-denied','Only the recipient may respond.');if(i.status==='accepted'&&i.matchId)return{status:'accepted',matchId:i.matchId};if(i.status!=='pending'||i.expiresAt.toMillis()<=Date.now())throw new functions.https.HttpsError('failed-precondition','Invitation is no longer available.');if(action==='decline'){t.update(ref,{status:'declined',updatedAt:FieldValue.serverTimestamp(),respondedAt:FieldValue.serverTimestamp()});return{status:'declined',matchId:null};}const friendship=await t.get(db.doc(`${FRIENDSHIPS}/${pairId(i.challengerId,i.recipientId)}`));if(!friendship.exists)throw new functions.https.HttpsError('failed-precondition','Players are no longer friends.');const matchId=`friend_${id}`,matchRef=db.doc(`${MATCH_COLLECTION}/${matchId}`),existing=await t.get(matchRef);if(!existing.exists)t.set(matchRef,{id:matchId,mode:'friend-battle',status:'lobby',playerIds:i.participantIds,hostPlayerId:i.challengerId,invitationId:id,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp(),startedAt:null,completedAt:null,roundNumber:1,totalRounds:i.rounds,difficulty:i.difficulty||'mixed',currentTurnPlayerId:null,players:{[i.challengerId]:{...i.challenger,ready:false,joinedLobbyAt:null,score:0,status:'invited'},[i.recipientId]:{...i.recipient,ready:false,joinedLobbyAt:FieldValue.serverTimestamp(),score:0,status:'joined'}}});t.update(ref,{status:'accepted',matchId,updatedAt:FieldValue.serverTimestamp(),respondedAt:FieldValue.serverTimestamp()});functions.logger.info('friend_battle_lobby_created',{matchId,invitationId:id});return{status:'accepted',matchId};});}));
 exports.cancelBattleInvitation=simplePendingTransition(INVITATIONS,'challengerId','cancelled');
 exports.setLobbyReady=functions.https.onCall(requireAuth(async(data,context)=>{const id=requireString(data?.matchId,'matchId'),ready=data?.ready===true,ref=db.doc(`${MATCH_COLLECTION}/${id}`);await db.runTransaction(async t=>{const s=await t.get(ref);if(!s.exists)throw new functions.https.HttpsError('not-found','Match not found.');const m=s.data(),uid=context.auth.uid;if(!m.playerIds.includes(uid))throw new functions.https.HttpsError('permission-denied','Not a participant.');if(m.status!=='lobby')throw new functions.https.HttpsError('failed-precondition','Match has left the lobby.');t.update(ref,{[`players.${uid}.ready`]:ready,[`players.${uid}.status`]:ready?'ready':'joined',[`players.${uid}.joinedLobbyAt`]:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});});return{status:'lobby',ready};}));
 exports.startFriendBattle=functions.https.onCall(requireAuth(async(data,context)=>db.runTransaction(async t=>{const id=requireString(data?.matchId,'matchId'),ref=db.doc(`${MATCH_COLLECTION}/${id}`),s=await t.get(ref);if(!s.exists)throw new functions.https.HttpsError('not-found','Match not found.');const m=s.data();if(!m.playerIds.includes(context.auth.uid)||m.hostPlayerId!==context.auth.uid)throw new functions.https.HttpsError('permission-denied','Only the host can start.');if(m.status==='active')return{status:'active',matchId:id};if(m.status!=='lobby'||!m.playerIds.every(x=>m.players[x]?.ready))throw new functions.https.HttpsError('failed-precondition','Both players must be ready.');t.update(ref,{status:'active',currentTurnPlayerId:m.playerIds[Math.floor(Math.random()*m.playerIds.length)],startedAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp(),[`players.${m.playerIds[0]}.status`]:'playing',[`players.${m.playerIds[1]}.status`]:'playing'});functions.logger.info('friend_battle_started',{matchId:id});return{status:'active',matchId:id};})));

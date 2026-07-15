@@ -2,6 +2,8 @@ import { Timestamp } from 'firebase/firestore';
 
 export type QuickMatchQueueStatus = 'searching' | 'matched' | 'cancelled' | 'expired';
 export type QuickMatchResultStatus = QuickMatchQueueStatus;
+export type MatchDifficulty = 'beginner' | 'disciple' | 'scholar' | 'mixed';
+export type MatchDifficultyPreference = MatchDifficulty | 'any';
 
 export interface QuickMatchQueueEntry {
   playerId: string;
@@ -16,6 +18,7 @@ export interface QuickMatchQueueEntry {
   expiresAt: Timestamp;
   matchId: string | null;
   searchToken: string;
+  difficultyPreference?: MatchDifficultyPreference;
 }
 
 export interface QuickMatchFunctionResult {
@@ -31,6 +34,7 @@ export interface FirestoreQuickMatch {
   mode: 'quick-match';
   status: 'waiting' | 'waiting_for_opponent' | 'active' | 'completed' | 'cancelled';
   isAsynchronous: boolean;
+  difficulty: MatchDifficulty;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   currentTurnPlayerId: string | null;

@@ -3,7 +3,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Subscription, interval } from 'rxjs';
-import { QuickMatchQueueEntry } from '../quick-match.models';
+import { MatchDifficultyPreference, QuickMatchQueueEntry } from '../quick-match.models';
 import { QuickMatchService } from '../quick-match.service';
 
 @Component({
@@ -295,6 +295,7 @@ export class QuickMatchSearchPage implements OnInit, OnDestroy {
   private resumeListener?: { remove: () => Promise<void> };
   private queueReady = false;
   private readonly startNewMatch = history.state?.startNewMatch === true;
+  private readonly difficultyPreference = (history.state?.difficultyPreference ?? 'any') as MatchDifficultyPreference;
 
   constructor(
     private readonly quickMatchService: QuickMatchService,
@@ -422,7 +423,7 @@ export class QuickMatchSearchPage implements OnInit, OnDestroy {
     this.isBusy = true;
 
     try {
-      const result = await this.quickMatchService.startSearch();
+      const result = await this.quickMatchService.startSearch(this.difficultyPreference);
       if (result.matchId) {
         await this.navigateToMatch(result.matchId);
         return;

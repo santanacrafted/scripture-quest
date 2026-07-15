@@ -7,6 +7,7 @@ import { firebaseDb, firebaseFunctions } from '../firebase';
 import { ConnectivityService } from '../connectivity/connectivity.service';
 import {
   FirestoreQuickMatch,
+  MatchDifficultyPreference,
   QuickMatchFunctionResult,
   QuickMatchQueueEntry,
 } from './quick-match.models';
@@ -25,8 +26,8 @@ export class QuickMatchService {
     private readonly connectivity: ConnectivityService,
   ) {}
 
-  async startSearch(): Promise<QuickMatchFunctionResult> {
-    const result = await this.callFunction('joinQuickMatchQueue');
+  async startSearch(difficultyPreference: MatchDifficultyPreference = 'any'): Promise<QuickMatchFunctionResult> {
+    const result = await this.callFunction('joinQuickMatchQueue', { difficultyPreference });
     this.persistSearch(result);
     this.observeQueueState();
     return result;

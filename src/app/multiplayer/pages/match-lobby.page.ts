@@ -55,6 +55,10 @@ import { firebaseAuth } from '../../firebase';
               <span>Rounds</span>
               <strong>{{ friendBattle?.totalRounds ?? quickMatch?.totalRounds ?? 6 }}</strong>
             </div>
+            <div>
+              <span>Difficulty</span>
+              <strong>{{ difficultyLabel }}</strong>
+            </div>
           </div>
 
           <div class="actions">
@@ -386,6 +390,11 @@ export class MatchLobbyPage implements OnInit {
     }
 
     return this.quickMatch.matchmaking.source === 'live-queue' ? 'Live queue' : 'Recent player';
+  }
+
+  get difficultyLabel(): string {
+    const difficulty = this.friendBattle?.difficulty ?? this.quickMatch?.difficulty ?? 'mixed';
+    return ({ beginner: 'Beginner', disciple: 'Disciple', scholar: 'Scholar', mixed: 'Mixed' } as Record<string, string>)[difficulty] ?? 'Mixed';
   }
 
   get playerSummaries(): Array<{ displayName: string }> {

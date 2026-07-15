@@ -4,9 +4,10 @@ import { httpsCallable } from 'firebase/functions';
 import { Observable, of } from 'rxjs';
 import { firebaseAuth, firebaseDb, firebaseFunctions } from '../firebase';
 import { BattleInvitation, FriendBattleMatch } from './friend-battle.models';
+import { MatchDifficulty } from '../multiplayer/quick-match.models';
 @Injectable({providedIn:'root'}) export class FriendBattleService {
  private call<T,R>(n:string,d:T){return httpsCallable<T,R>(firebaseFunctions,n)(d).then(x=>x.data);}
- sendInvitation(recipientId:string,rounds=6){return this.call('sendFriendBattleInvitation',{recipientId,rounds});}
+ sendInvitation(recipientId:string,rounds=6,difficulty:MatchDifficulty='mixed'){return this.call('sendFriendBattleInvitation',{recipientId,rounds,difficulty});}
  cancelInvitation(invitationId:string){return this.call('cancelBattleInvitation',{invitationId});}
  acceptInvitation(invitationId:string){return this.call<{invitationId:string;action:string},{matchId:string}>('respondToBattleInvitation',{invitationId,action:'accept'});}
  declineInvitation(invitationId:string){return this.call('respondToBattleInvitation',{invitationId,action:'decline'});}
