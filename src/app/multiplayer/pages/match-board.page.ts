@@ -379,6 +379,10 @@ export class MatchBoardPage implements OnInit, OnDestroy {
       return;
     }
     this.syncingAnswer = this.service.hasPendingAnswer(id);
+    const optimisticMatch = history.state?.optimisticMatch as FirestoreQuickMatch | undefined;
+    if (this.syncingAnswer && optimisticMatch?.id === id) {
+      this.match = optimisticMatch;
+    }
     if (this.syncingAnswer) {
       this.syncFallbackTimer = setTimeout(() => void this.resolveSyncFallback(id), 8000);
     }

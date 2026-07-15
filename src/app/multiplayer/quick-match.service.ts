@@ -4,6 +4,7 @@ import { httpsCallable } from 'firebase/functions';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { firebaseDb, firebaseFunctions } from '../firebase';
+import { ConnectivityService } from '../connectivity/connectivity.service';
 import {
   FirestoreQuickMatch,
   QuickMatchFunctionResult,
@@ -19,7 +20,10 @@ export class QuickMatchService {
   private unsubscribeQueue?: () => void;
   private readonly pendingAnswerSaves = new Map<string, Promise<import('./quick-match.models').MatchAnswerResult>>();
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly connectivity: ConnectivityService,
+  ) {}
 
   async startSearch(): Promise<QuickMatchFunctionResult> {
     const result = await this.callFunction('joinQuickMatchQueue');
@@ -122,6 +126,9 @@ export class QuickMatchService {
   }
 
   async spinWheel(matchId: string, category: string): Promise<import('./quick-match.models').MatchSpinResult> {
+    // The board can reopen optimistically after a correct answer. Preserve the
+    // server operation order if the player spins again before that save lands.
+    await this.pendingAnswerSaves.get(matchId);
     return this.callFunction('spinMatchWheel', { matchId, category }) as unknown as Promise<import('./quick-match.models').MatchSpinResult>;
   }
 
@@ -217,8 +224,16 @@ export class QuickMatchService {
     payload: Record<string, unknown> = {},
   ): Promise<QuickMatchFunctionResult> {
     const callable = httpsCallable<Record<string, unknown>, QuickMatchFunctionResult>(firebaseFunctions, name);
-    const response = await callable(payload);
-    return response.data;
+    const finishConnectionCheck = this.connectivity.beginRequest();
+    try {
+      const response = await callable(payload);
+      return response.data;
+    } catch (error) {
+      this.connectivity.reportRequestError(error);
+      throw error;
+    } finally {
+      finishConnectionCheck();
+    }
   }
 
   private persistSearch(result: QuickMatchFunctionResult): void {

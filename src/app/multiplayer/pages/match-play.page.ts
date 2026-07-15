@@ -775,6 +775,9 @@ export class MatchPlayPage implements OnInit, OnDestroy {
     clearInterval(this.timer);
     this.selected = a;
     this.submitting = true;
+    // An answered question must never be revived from local cache if the
+    // connection drops while its result is being committed.
+    sessionStorage.removeItem(`quick-match-question:${match.id}`);
     if (this.cachedCorrectAnswer) {
       this.question.correctAnswer = this.cachedCorrectAnswer;
       this.correct = a.trim().toLowerCase() === this.cachedCorrectAnswer.trim().toLowerCase();
@@ -809,25 +812,22 @@ export class MatchPlayPage implements OnInit, OnDestroy {
   done() {
     if (!this.match || this.returningToBoard) return;
     this.returningToBoard = true;
-    const matchId = this.match.id;
-    const pendingSave = this.turnSave;
 
-    if (this.waitingForOpponent) {
-      void this.router.navigate(['/multiplayer-battle']);
+    if (this.correct) {
+      const optimisticMatch = {
+        ...this.match,
+        phase: 'spin',
+        selectedCategory: null,
+        currentQuestion: null,
+      };
+      void this.router.navigate(['/multiplayer/board', this.match.id], {
+        state: { optimisticMatch },
+      });
       return;
     }
 
-    // Navigation must never wait for a cold Cloud Function. The answer save
-    // was already started when the player answered and safely continues after
-    // this component is destroyed.
-    void this.router.navigate(['/multiplayer/board', matchId]);
-
-    // Solo/waiting matches still land on the battle page once the authoritative
-    // result arrives, without holding up the immediate board transition.
-    void pendingSave?.then(() => {
-      if (this.waitingForOpponent) {
-        void this.router.navigate(['/multiplayer-battle']);
-      }
-    });
+    // An incorrect answer passes the turn, so leave immediately while any
+    // remaining server work finishes through the root service.
+    void this.router.navigate(['/multiplayer-battle']);
   }
 }
