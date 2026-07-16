@@ -995,7 +995,7 @@ export class QuestionEditorPage implements OnInit, OnDestroy {
     return 'text';
   }
   readonly multipleChoiceQuestionTypes: ContentQuestionType[] = [
-    'multiple_choice', 'pictionary', 'verse_completion', 'who_said_it',
+    'multiple_choice', 'pictionary', 'verse_completion', 'reference_match', 'who_said_it',
     'emoji_challenge', 'odd_one_out', 'what_happens_next',
   ];
   get categoryLabel() {

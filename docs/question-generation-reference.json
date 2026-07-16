@@ -128,7 +128,7 @@
       "passages": [{ "bookId": "philippians", "bookName": "Philippians", "chapterStart": 4, "chapterEnd": 4, "verseStart": 13, "verseEnd": 13 }],
       "topics": ["strength", "contentment"],
       "tags": ["Paul"],
-      "answerData": { "type": "text", "primaryAnswer": "Philippians 4:13", "acceptedAnswers": [], "distractors": ["Romans 8:28", "John 3:16", "Psalm 46:1"], "caseSensitive": false }
+      "answerData": { "type": "multiple_choice", "options": [{ "id": "o0", "text": "Philippians 4:13" }, { "id": "o1", "text": "Romans 8:28" }, { "id": "o2", "text": "John 3:16" }, { "id": "o3", "text": "Psalm 46:1" }], "correctOptionIds": ["o0"] }
     },
     {
       "externalId": "example-who-am-i-001",

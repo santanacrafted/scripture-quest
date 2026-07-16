@@ -510,7 +510,7 @@ const CONTENT_TYPES = ['multiple_choice','pictionary','verse_completion','refere
 const CONTENT_DIFFICULTIES = ['easy','medium','hard','expert'];
 const CONTENT_SCOPES = ['chapter','book','multi_book','whole_bible'];
 const CONTENT_SUPPORTED_MODES = ['quiz','battle'];
-const MULTIPLE_CHOICE_CONTENT_TYPES = ['multiple_choice','pictionary','verse_completion','who_said_it','emoji_challenge','odd_one_out','what_happens_next'];
+const MULTIPLE_CHOICE_CONTENT_TYPES = ['multiple_choice','pictionary','verse_completion','reference_match','who_said_it','emoji_challenge','odd_one_out','what_happens_next'];
 function validateContentQuestion(question, publishing = false) {
   const errors = [];
   if (!CONTENT_CATEGORIES.includes(question?.category)) errors.push('Invalid category.');
