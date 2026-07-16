@@ -580,18 +580,21 @@ export class MatchPlayPage implements OnInit, OnDestroy {
     const id = this.route.snapshot.paramMap.get('id');
     this.previousBodyOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    const optimisticMatch = history.state?.optimisticMatch as FirestoreQuickMatch | undefined;
+    if (id && optimisticMatch?.id === id) this.match = optimisticMatch;
     if (id) {
       try {
         const cached = JSON.parse(sessionStorage.getItem(`quick-match-question:${id}`) || 'null');
         if (cached?.question) {
           this.cachedCategory = cached.category;
+          this.cachedCorrectAnswer = sessionStorage.getItem(`quick-match-answer:${id}:${cached.question.id}`) || '';
           this.question = { ...cached.question, category: cached.category, correctAnswer: '', reference: '', explanation: '' } as Question;
           this.initializeQuestionControls();
         }
       } catch { sessionStorage.removeItem(`quick-match-question:${id}`); }
     }
     const userId = firebaseAuth.currentUser?.uid;
-    this.match = id ? (await this.service.observeMatch(id)) ?? undefined : undefined;
+    this.match = id ? (await this.service.observeMatch(id)) ?? this.match : undefined;
     if (!this.match?.selectedCategory || !this.match.currentQuestion || this.match.currentTurnPlayerId !== userId) {
       this.router.navigate(['/multiplayer/board', id]);
       return;

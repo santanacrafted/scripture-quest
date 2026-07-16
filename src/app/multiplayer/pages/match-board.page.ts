@@ -13,6 +13,8 @@ import { firebaseAuth } from '../../firebase';
 import { FirestoreQuickMatch } from '../quick-match.models';
 import { QuickMatchService } from '../quick-match.service';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+
+type MatchSpinResultQuestion = Awaited<ReturnType<QuickMatchService['spinWheel']>>['question'];
 @Component({
   selector: 'app-match-board-page',
   standalone: true,
@@ -529,7 +531,9 @@ export class MatchBoardPage implements OnInit, OnDestroy {
       await new Promise(resolve => setTimeout(resolve, 1000));
       sessionStorage.setItem(`quick-match-answer:${matchId}:${spinResult.question.id}`, spinResult.correctAnswer);
       sessionStorage.setItem(`quick-match-question:${matchId}`, JSON.stringify({ question: spinResult.question, category }));
-      await this.router.navigate(['/multiplayer/play', matchId]);
+      await this.router.navigate(['/multiplayer/play', matchId], {
+        state: { optimisticMatch: this.questionReadyMatch(category, spinResult.question) },
+      });
     } finally {
       clearInterval(rouletteTimer);
       this.transitionCategory = null;
@@ -581,7 +585,9 @@ export class MatchBoardPage implements OnInit, OnDestroy {
         await new Promise(resolve => setTimeout(resolve, 1000));
         sessionStorage.setItem(`quick-match-answer:${matchId}:${spinResult.question.id}`, spinResult.correctAnswer);
         sessionStorage.setItem(`quick-match-question:${matchId}`, JSON.stringify({ question: spinResult.question, category: selectedCategory }));
-        await this.router.navigate(['/multiplayer/play', matchId]);
+        await this.router.navigate(['/multiplayer/play', matchId], {
+          state: { optimisticMatch: this.questionReadyMatch(selectedCategory, spinResult.question) },
+        });
       } catch (error) {
         console.error('[Quick Match] Wheel spin failed.', error);
         this.wheelError = error instanceof Error && error.message
@@ -605,6 +611,14 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     if (value === null) return;
     const stored = Number(value);
     if (Number.isFinite(stored)) this.wheelRotation = ((stored % 360) + 360) % 360;
+  }
+  private questionReadyMatch(category: MatchCategory, question: MatchSpinResultQuestion): FirestoreQuickMatch | undefined {
+    return this.match ? {
+      ...this.match,
+      phase: 'question',
+      selectedCategory: category,
+      currentQuestion: question as FirestoreQuickMatch['currentQuestion'],
+    } : undefined;
   }
   sparks(id: string) {
     return this.match?.players[id]?.sparks || 0;
