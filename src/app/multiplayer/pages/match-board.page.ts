@@ -521,7 +521,7 @@ export class MatchBoardPage implements OnInit, OnDestroy {
       await this.service.chooseLightChallenge(matchId, category, action);
       const [spinResult] = await Promise.all([
         this.service.spinWheel(matchId, category),
-        new Promise(resolve => setTimeout(resolve, 2000)),
+        new Promise(resolve => setTimeout(resolve, 1000)),
       ]);
       clearInterval(rouletteTimer);
       this.displayedQuestionType = this.formatQuestionType(spinResult.question.questionType);
@@ -573,7 +573,7 @@ export class MatchBoardPage implements OnInit, OnDestroy {
         }, 120);
         const [spinResult] = await Promise.all([
           questionRequest,
-          new Promise(resolve => setTimeout(resolve, 2000)),
+          new Promise(resolve => setTimeout(resolve, 1000)),
         ]);
         clearInterval(rouletteTimer);
         this.displayedQuestionType = this.formatQuestionType(spinResult.question.questionType);
