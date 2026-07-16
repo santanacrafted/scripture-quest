@@ -3,7 +3,7 @@
   "purpose": "Give this file to ChatGPT when generating Scripture Quest questions. Return only a JSON array of question objects matching the examples.",
   "allowedValues": {
     "language": ["en", "es"],
-    "category": ["characters", "scripture", "stories", "places", "bible_knowledge"],
+    "category": ["characters", "scripture", "stories", "places", "teachings"],
     "questionType": [
       "multiple_choice",
       "pictionary",
@@ -30,7 +30,7 @@
     "scripture": "Verses, quotations, references, and biblical text",
     "stories": "Events, miracles, parables, and narratives",
     "places": "Geography, journeys, cities, nations, and maps",
-    "bible_knowledge": "Books, structure, authorship, themes, and general Bible knowledge"
+    "teachings": "Commandments, Beatitudes, spiritual fruit, wisdom, faith, prayer, forgiveness, salvation, Christian living, and biblical principles"
   },
   "generationRules": [
     "Use only the allowed enum values exactly as written.",
@@ -165,21 +165,21 @@
       "answerData": { "type": "multiple_choice", "options": [{ "id": "o0", "text": "Isaiah" }, { "id": "o1", "text": "Jeremiah" }, { "id": "o2", "text": "Samuel" }, { "id": "o3", "text": "Ezekiel" }], "correctOptionIds": ["o0"] }
     },
     {
-      "externalId": "example-sequence-001",
+      "externalId": "example-teachings-sequence-001",
       "language": "en",
-      "category": "bible_knowledge",
+      "category": "teachings",
       "questionType": "sequence",
       "scope": "whole_bible",
       "supportedModes": ["quiz", "battle"],
       "difficulty": "easy",
-      "prompt": "Arrange the first five books of the Bible in the correct order.",
-      "explanation": "The Pentateuch begins with Genesis, Exodus, Leviticus, Numbers, and Deuteronomy.",
-      "scriptureReference": "Genesis-Deuteronomy",
-      "testament": "old",
-      "passages": [{ "bookId": "genesis", "bookName": "Genesis", "chapterStart": 1, "chapterEnd": 50 }, { "bookId": "deuteronomy", "bookName": "Deuteronomy", "chapterStart": 1, "chapterEnd": 34 }],
-      "topics": ["Bible books", "Pentateuch"],
-      "tags": ["Torah"],
-      "answerData": { "type": "sequence", "items": [{ "id": "s0", "text": "Genesis", "correctPosition": 0 }, { "id": "s1", "text": "Exodus", "correctPosition": 1 }, { "id": "s2", "text": "Leviticus", "correctPosition": 2 }, { "id": "s3", "text": "Numbers", "correctPosition": 3 }, { "id": "s4", "text": "Deuteronomy", "correctPosition": 4 }] }
+      "prompt": "Arrange these steps from Jesus' model prayer in the order he taught them.",
+      "explanation": "Jesus begins with honoring the Father, then prays for God's kingdom, daily provision, and forgiveness.",
+      "scriptureReference": "Matthew 6:9-12",
+      "testament": "new",
+      "passages": [{ "bookId": "matthew", "bookName": "Matthew", "chapterStart": 6, "chapterEnd": 6, "verseStart": 9, "verseEnd": 12 }],
+      "topics": ["prayer", "Christian living"],
+      "tags": ["Lord's Prayer"],
+      "answerData": { "type": "sequence", "items": [{ "id": "s0", "text": "Honor the Father's name", "correctPosition": 0 }, { "id": "s1", "text": "Pray for God's kingdom", "correctPosition": 1 }, { "id": "s2", "text": "Ask for daily bread", "correctPosition": 2 }, { "id": "s3", "text": "Ask for forgiveness", "correctPosition": 3 }] }
     },
     {
       "externalId": "example-map-challenge-001",
@@ -251,21 +251,21 @@
       "answerData": { "type": "match_pairs", "pairs": [{ "id": "p0", "left": "Moses", "right": "Mount Sinai" }, { "id": "p1", "left": "Jesus", "right": "Bethlehem" }, { "id": "p2", "left": "Elijah", "right": "Mount Carmel" }] }
     },
     {
-      "externalId": "example-odd-one-out-001",
+      "externalId": "example-teachings-odd-one-out-001",
       "language": "en",
-      "category": "bible_knowledge",
+      "category": "teachings",
       "questionType": "odd_one_out",
       "scope": "whole_bible",
       "supportedModes": ["quiz", "battle"],
       "difficulty": "medium",
-      "prompt": "Which one is not one of the four Gospels?",
-      "explanation": "Romans is an epistle written by Paul, while Matthew, Mark, and Luke are Gospels.",
-      "scriptureReference": "Matthew; Mark; Luke; Romans",
+      "prompt": "Which one is not listed as a fruit of the Spirit?",
+      "explanation": "Courage is a biblical virtue, but it is not named in Paul's list of the fruit of the Spirit.",
+      "scriptureReference": "Galatians 5:22-23",
       "testament": "new",
-      "passages": [{ "bookId": "matthew", "bookName": "Matthew", "chapterStart": 1, "chapterEnd": 28 }, { "bookId": "romans", "bookName": "Romans", "chapterStart": 1, "chapterEnd": 16 }],
-      "topics": ["Bible books", "Gospels"],
-      "tags": ["New Testament"],
-      "answerData": { "type": "multiple_choice", "options": [{ "id": "o0", "text": "Romans" }, { "id": "o1", "text": "Matthew" }, { "id": "o2", "text": "Mark" }, { "id": "o3", "text": "Luke" }], "correctOptionIds": ["o0"] }
+      "passages": [{ "bookId": "galatians", "bookName": "Galatians", "chapterStart": 5, "chapterEnd": 5, "verseStart": 22, "verseEnd": 23 }],
+      "topics": ["Fruit of the Spirit", "Christian living"],
+      "tags": ["spiritual fruit"],
+      "answerData": { "type": "multiple_choice", "options": [{ "id": "o0", "text": "Courage" }, { "id": "o1", "text": "Kindness" }, { "id": "o2", "text": "Patience" }, { "id": "o3", "text": "Self-control" }], "correctOptionIds": ["o0"] }
     },
     {
       "externalId": "example-what-happens-next-001",

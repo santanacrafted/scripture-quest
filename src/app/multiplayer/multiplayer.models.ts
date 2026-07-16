@@ -1,7 +1,7 @@
 export type MultiplayerStatus = 'waiting_for_opponent' | 'active' | 'completed' | 'abandoned';
 export interface CategoryProgress { current:number; target:number; completed:boolean; }
 export interface MatchCategoryProgressMap { [category:string]:CategoryProgress; }
-export type MatchCategory = 'characters' | 'scripture' | 'stories' | 'places' | 'knowledge';
+export type MatchCategory = 'characters' | 'scripture' | 'stories' | 'places' | 'teachings';
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
 export type QuestionScope = 'chapter' | 'book' | 'multi_book' | 'whole_bible';
 export type QuestionSupportedMode = 'quiz' | 'battle';
@@ -20,7 +20,7 @@ export interface Match {
 export interface MatchTurn { id:string; matchId:string; playerId:string; questionId:string; selectedAnswer:string; isCorrect:boolean; category:MatchCategory; startedAt:string; answeredAt:string; timeExpired:boolean; }
 export interface Question { id:string; category:MatchCategory; questionType:QuestionType; difficulty:Difficulty; scope:QuestionScope; supportedModes:QuestionSupportedMode[]; scopeTokens:string[]; text:string; choices:string[]; correctAnswer:string; reference:string; explanation:string; media?: { downloadUrl:string; altText:string }; matchPairs?: { left:string[]; right:string[] }; verseSegments?: { id:string; text:string }[]; }
 
-export const MULTIPLAYER_CATEGORIES: MatchCategory[] = ['characters','scripture','stories','places','knowledge'];
-export const CATEGORY_LABELS: Record<MatchCategory,string> = { characters:'Characters', scripture:'Scripture', stories:'Stories & Events', places:'Places', knowledge:'Bible Knowledge' };
-export const CATEGORY_ICONS: Record<MatchCategory,string> = { characters:'👤', scripture:'📖', stories:'🏛', places:'🗺', knowledge:'🧠' };
-export const CATEGORY_COLORS: Record<MatchCategory,string> = { characters:'#f59e4a', scripture:'#4dd6a7', stories:'#b978ed', places:'#4aa9f5', knowledge:'#f0c94a' };
+export const MULTIPLAYER_CATEGORIES: MatchCategory[] = ['characters','scripture','stories','places','teachings'];
+export const CATEGORY_LABELS: Record<MatchCategory,string> = { characters:'Characters', scripture:'Scripture', stories:'Stories & Events', places:'Places', teachings:'Teachings' };
+export const CATEGORY_ICONS: Record<MatchCategory,string> = { characters:'👤', scripture:'📖', stories:'🏛', places:'🗺', teachings:'📜' };
+export const CATEGORY_COLORS: Record<MatchCategory,string> = { characters:'#f59e4a', scripture:'#4dd6a7', stories:'#b978ed', places:'#4aa9f5', teachings:'#f0c94a' };

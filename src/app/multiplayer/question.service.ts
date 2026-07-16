@@ -159,30 +159,30 @@ export class QuestionService {
       'The other cities were major stops in Paul’s journeys.',
     ],
     [
-      'k1',
-      'knowledge',
+      't1',
+      'teachings',
       'true_false',
       'easy',
-      'The Bible has 66 books in the common Protestant canon.',
-      ['True', 'False', 'Only in Greek', 'Not recorded'],
+      'Jesus taught his followers to love their enemies.',
+      ['True', 'False', 'Only their neighbors', 'Only other disciples'],
       'True',
-      'Bible canon',
-      'The Protestant Bible contains 39 Old and 27 New Testament books.',
+      'Matthew 5:44',
+      'Jesus commanded his followers to love their enemies and pray for their persecutors.',
     ],
     [
-      'k2',
-      'knowledge',
+      't2',
+      'teachings',
       'multiple_choice',
       'medium',
-      'What object did David use to defeat Goliath?',
-      ['A spear', 'A sling', 'A sword', 'A bow'],
-      'A sling',
-      '1 Samuel 17',
-      'David chose five stones and used his sling.',
+      'According to Jesus, which is the greatest commandment?',
+      ['Love the Lord your God', 'Keep every feast', 'Build an altar', 'Become a teacher'],
+      'Love the Lord your God',
+      'Matthew 22:37–38',
+      'Jesus taught that loving God with all one’s heart, soul, and mind is the greatest commandment.',
     ],
     [
-      'k3',
-      'knowledge',
+      't3',
+      'teachings',
       'odd_one_out',
       'hard',
       'Which is not a fruit of the Spirit listed in Galatians 5?',
@@ -234,8 +234,7 @@ export class QuestionService {
     }
   }
   private fromStudio(id: string, data: any): Question | null {
-    const category =
-      data.category === 'bible_knowledge' ? 'knowledge' : data.category;
+    const category = data.category;
     if (!MULTIPLAYER_CATEGORIES.includes(category)) return null;
     const answer = data.answerData || {};
     let choices: string[] = [],

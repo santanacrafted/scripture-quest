@@ -4,7 +4,7 @@ export type ContentCategory =
   | 'scripture'
   | 'stories'
   | 'places'
-  | 'bible_knowledge';
+  | 'teachings';
 export type ContentQuestionType =
   | 'multiple_choice'
   | 'pictionary'
@@ -155,7 +155,7 @@ export const CATEGORIES: [ContentCategory, string][] = [
   ['scripture', '📖 Scripture'],
   ['stories', '🏛 Stories & Events'],
   ['places', '🗺 Places'],
-  ['bible_knowledge', '🧠 Bible Knowledge'],
+  ['teachings', '📜 Teachings'],
 ];
 export const TYPES: [ContentQuestionType, string][] = [
   ['multiple_choice', 'Multiple Choice'],

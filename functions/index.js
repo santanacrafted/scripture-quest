@@ -300,10 +300,8 @@ exports.notifyPlayerTurn = functions.firestore
 exports.spinMatchWheel = functions.https.onCall(requireAuth(async (data, context) => {
   const matchId = requireString(data?.matchId, 'matchId');
   const matchRef = db.collection(MATCH_COLLECTION).doc(matchId);
-  const categories = ['characters', 'scripture', 'stories', 'places', 'bible_knowledge'];
-  const requestedCategory = typeof data?.category === 'string'
-    ? (data.category === 'knowledge' ? 'bible_knowledge' : data.category)
-    : null;
+  const categories = ['characters', 'scripture', 'stories', 'places', 'teachings'];
+  const requestedCategory = typeof data?.category === 'string' ? data.category : null;
   let category = categories.includes(requestedCategory)
     ? requestedCategory
     : categories[Math.floor(Math.random() * categories.length)];
@@ -311,20 +309,11 @@ exports.spinMatchWheel = functions.https.onCall(requireAuth(async (data, context
   if (!matchBeforeSpin.exists) throw new functions.https.HttpsError('not-found', 'Match not found.');
   const requestedPhase = matchBeforeSpin.get('phase');
   if (requestedPhase === 'light_challenge' && matchBeforeSpin.get('selectedCategory')) {
-    category = matchBeforeSpin.get('selectedCategory') === 'knowledge' ? 'bible_knowledge' : matchBeforeSpin.get('selectedCategory');
+    category = matchBeforeSpin.get('selectedCategory');
   }
-  // `bible_knowledge` is the Content Studio value, while older imports and
-  // the game model used `knowledge`. Read both so this wheel segment cannot
-  // become a dead end when a library contains either representation.
-  const categoryAliases = category === 'bible_knowledge'
-    ? ['bible_knowledge', 'knowledge']
-    : [category];
-  const questionSnapshots = await Promise.all(categoryAliases.map((alias) =>
-    db.collection('questions').where('category', '==', alias).limit(100).get()
-  ));
-  const questionDocs = [...new Map(
-    questionSnapshots.flatMap((snapshot) => snapshot.docs).map((doc) => [doc.id, doc])
-  ).values()];
+  const questionSnapshotForCategory = await db.collection('questions')
+    .where('category', '==', category).limit(100).get();
+  const questionDocs = questionSnapshotForCategory.docs;
   const playableQuestions = questionDocs.filter((doc) =>
     doc.get('status') === 'published' &&
     doc.get('isActive') === true &&
@@ -351,7 +340,7 @@ exports.spinMatchWheel = functions.https.onCall(requireAuth(async (data, context
     }
     assertMatchTurn(match, context.auth.uid, match.phase);
     transaction.update(matchRef, {
-      status: 'active', phase: 'question', selectedCategory: category === 'bible_knowledge' ? 'knowledge' : category,
+      status: 'active', phase: 'question', selectedCategory: category,
       currentQuestion: { ...publicQuestion, kind: match.phase === 'light_challenge' ? 'light_challenge' : 'standard' },
       lastTurnSummary: match.phase === 'light_challenge' ? 'Answer correctly to capture the Light!' : `The wheel landed on ${category}.`, updatedAt: FieldValue.serverTimestamp(),
     });
@@ -368,7 +357,7 @@ exports.chooseLightChallenge = functions.https.onCall(requireAuth(async (data, c
   const matchId = requireString(data?.matchId, 'matchId');
   const category = requireString(data?.category, 'category');
   const action = data?.action;
-  if (!['capture', 'steal'].includes(action) || !['characters', 'scripture', 'stories', 'places', 'knowledge'].includes(category)) {
+  if (!['capture', 'steal'].includes(action) || !['characters', 'scripture', 'stories', 'places', 'teachings'].includes(category)) {
     throw new functions.https.HttpsError('invalid-argument', 'Invalid Light Challenge choice.');
   }
   const matchRef = db.collection(MATCH_COLLECTION).doc(matchId);
@@ -505,7 +494,7 @@ function requireAdmin(handler) {
   });
 }
 
-const CONTENT_CATEGORIES = ['characters','scripture','stories','places','bible_knowledge'];
+const CONTENT_CATEGORIES = ['characters','scripture','stories','places','teachings'];
 const CONTENT_TYPES = ['multiple_choice','pictionary','verse_completion','reference_match','who_am_i','who_said_it','sequence','map_challenge','emoji_challenge','true_false','match_pairs','odd_one_out','what_happens_next','arrange_verse'];
 const CONTENT_DIFFICULTIES = ['easy','medium','hard','expert'];
 const CONTENT_SCOPES = ['chapter','book','multi_book','whole_bible'];
