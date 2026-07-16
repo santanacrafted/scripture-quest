@@ -28,10 +28,9 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, DragDropModule, InteractiveQuestionComponent],
   template: `<header>
-      <button class="back-button" type="button" (click)="backToQuestions()" aria-label="Back to questions">‹</button>
-      <div>
-        <p>{{ id ? 'EDIT QUESTION' : 'NEW QUESTION' }}</p>
+      <div class="title-row">
         <h1>{{ id ? 'Edit question' : 'Create question' }}</h1>
+        <button class="back-button" type="button" (click)="backToQuestions()" aria-label="Back to questions">‹</button>
       </div>
       <span
         class="status-pill"
@@ -362,11 +361,13 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
         min-width: 0;
       }
       header {
-        display: flex;
-        align-items: center;
+        display: grid;
+        grid-template-columns:minmax(0,1fr) auto;
+        align-items:center;
         gap: 1rem;
         margin-bottom: 1rem;
       }
+      .title-row { grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:1rem; }
       .back-button {
         width: 42px;
         height: 42px;
@@ -386,16 +387,6 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
       header > a {
         color: #276b5b;
         text-decoration: none;
-      }
-      header div {
-        flex: 1;
-      }
-      header p {
-        margin: 0;
-        color: #26705f;
-        font-size: 0.65rem;
-        font-weight: 900;
-        letter-spacing: 0.14em;
       }
       h1 {
         margin: 0.15rem 0;
@@ -645,14 +636,12 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
           overflow: hidden;
         }
         header {
-          display: grid;
           grid-template-columns: 1fr;
           gap: 0.5rem;
           margin-bottom: 0.7rem;
         }
-        header > div {
-          min-width: 0;
-        }
+        .title-row { min-height:48px; }
+        .back-button { order:2;flex:0 0 44px;width:44px;height:44px; }
         header h1 {
           font-size: 1.6rem;
         }

@@ -826,8 +826,19 @@ export class MatchPlayPage implements OnInit, OnDestroy {
       return;
     }
 
-    // An incorrect answer passes the turn, so leave immediately while any
-    // remaining server work finishes through the root service.
-    void this.router.navigate(['/multiplayer-battle']);
+    // Carry the known turn change into the match list. Firestore can emit its
+    // cached pre-answer snapshot before the committed snapshot arrives.
+    const opponentId = this.match.playerIds.find(id => id !== firebaseAuth.currentUser?.uid) || null;
+    const optimisticMatch = {
+      ...this.match,
+      phase: 'spin' as const,
+      selectedCategory: null,
+      currentQuestion: null,
+      currentTurnPlayerId: opponentId,
+      lastTurnSummary: 'Incorrect. Waiting for your opponent.',
+    };
+    void this.router.navigate(['/multiplayer-battle'], {
+      state: { optimisticMatch },
+    });
   }
 }
