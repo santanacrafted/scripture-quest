@@ -619,9 +619,9 @@ exports.bulkImportQuestions = functions.https.onCall(requireAdmin(async (data, c
 }));
 
 async function joinOrAttemptQuickMatch(playerId, difficultyPreference = 'any') {
-  return joinAsyncQuickMatch(playerId, difficultyPreference);
-  /* Legacy simultaneous-search implementation retained temporarily for
-     already deployed clients; new clients use the asynchronous match queue. */
+  // Keep players in the live queue until a real opponent is claimed. A Quick
+  // Match must never be created with only one player because the battle list
+  // and turn flow require an authoritative opponent profile.
   const profile = await loadAuthoritativeProfile(playerId);
   const queueRef = db.collection(QUEUE_COLLECTION).doc(playerId);
   const now = Timestamp.now();
