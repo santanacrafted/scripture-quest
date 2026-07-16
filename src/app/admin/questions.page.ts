@@ -304,7 +304,7 @@ import { QuestionEditorPage } from './question-editor.page';
         font-weight: 800;
       }
       .action-cell .edit { padding:.7rem 1rem; border:0; border-radius:8px; background:#1d6958; color:#fff; font-weight:800; }
-      .editor-modal { position:fixed;z-index:1100;inset:0;overflow:auto;padding:clamp(.5rem,2vw,1.25rem);background:#071612c7;backdrop-filter:blur(5px); }
+      .editor-modal { position:fixed;z-index:1100;inset:0;overflow:auto;padding:max(calc(env(safe-area-inset-top) + .75rem),4rem) clamp(.5rem,2vw,1.25rem) max(calc(env(safe-area-inset-bottom) + .75rem),1rem);background:#071612c7;backdrop-filter:blur(5px); }
       .editor-panel { width:min(100%,1100px);min-height:calc(100svh - 2.5rem);margin:auto;padding:clamp(.75rem,2vw,1.5rem);border-radius:16px;background:#f7f9f8;box-shadow:0 24px 80px #00150f99; }
       table {
         width: 100%;
