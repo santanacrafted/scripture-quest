@@ -971,7 +971,7 @@ function assertMatchTurn(match, playerId, phase) {
   if (!Array.isArray(match.playerIds) || !match.playerIds.includes(playerId)) {
     throw new functions.https.HttpsError('permission-denied', 'You are not a participant in this match.');
   }
-  if (!['waiting', 'active'].includes(match.status) || match.currentTurnPlayerId !== playerId || match.phase !== phase) {
+  if (!['waiting', 'waiting_for_opponent', 'active'].includes(match.status) || match.currentTurnPlayerId !== playerId || match.phase !== phase) {
     throw new functions.https.HttpsError('failed-precondition', 'It is not your turn for this action.');
   }
 }
