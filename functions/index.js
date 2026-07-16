@@ -255,7 +255,7 @@ exports.notifyMatchedPlayer = functions.firestore
       await admin.messaging().send({
         token,
         notification: {
-          title: 'New Scripture Quest battle',
+          title: 'New Lightbearer battle',
           body: 'An explorer challenged you to a Quick Match.',
         },
         data: {
@@ -288,7 +288,7 @@ exports.notifyPlayerTurn = functions.firestore
     try {
       await admin.messaging().send({
         token,
-        notification: { title: 'Your turn', body: 'Spin the wheel and continue your Scripture Quest battle.' },
+        notification: { title: 'Your turn', body: 'Spin the wheel and continue your Lightbearer battle.' },
         data: { matchId: context.params.matchId, mode: match.mode || MODE, route: `/multiplayer/board/${context.params.matchId}` },
       });
     } catch (error) {

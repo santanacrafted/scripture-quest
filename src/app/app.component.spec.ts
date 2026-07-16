@@ -16,9 +16,9 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have the 'scripture-quest' title`, () => {
+  it(`should have the 'Lightbearer' title`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    expect(app.title).toEqual('scripture-quest');
+    expect(app.title).toEqual('Lightbearer');
   });
 });

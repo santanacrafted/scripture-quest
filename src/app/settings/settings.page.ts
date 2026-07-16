@@ -26,7 +26,7 @@ import { BackgroundMusicService } from '../audio/background-music.service';
       <section class="mx-auto flex max-w-md flex-col gap-5">
         <header class="text-center">
           <p class="font-serif text-xs font-bold uppercase tracking-[0.24em] text-quest-gold">
-            Scripture Quest
+            Lightbearer
           </p>
           <h1 class="mt-2 font-serif text-4xl font-bold uppercase text-amber-50">
             Settings

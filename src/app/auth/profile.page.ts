@@ -20,7 +20,7 @@ import { AuthService } from './auth.service';
 
         <div *ngIf="user; else loading" class="profile-content">
           <div class="avatar" aria-hidden="true">{{ initial }}</div>
-          <p class="account-note">Your private Scripture Quest account details</p>
+          <p class="account-note">Your private Lightbearer account details</p>
 
           <dl class="details">
             <div class="detail-card">

@@ -11,8 +11,8 @@ import { AuthService } from '../auth/auth.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <main class="launch-screen" aria-label="Scripture Quest launch screen">
-      <img class="launch-art" src="/app-launch.png" alt="Scripture Quest" />
+    <main class="launch-screen" aria-label="Lightbearer launch screen">
+      <img class="launch-art" src="/app-launch.png" alt="Lightbearer" />
     </main>
   `,
   styles: [`

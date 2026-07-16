@@ -7,14 +7,14 @@ import { filter, Subscription } from 'rxjs';
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
   template: `<main>
     <header class="mobile-header">
-      <a class="brand" routerLink="/admin"><b>✦</b><span>Scripture Quest<small>Content Studio</small></span></a>
+      <a class="brand" routerLink="/admin"><b>✦</b><span>Lightbearer<small>Content Studio</small></span></a>
       <button type="button" class="menu-button" (click)="openMenu()" aria-label="Open Studio navigation" [attr.aria-expanded]="menuOpen">☰</button>
     </header>
     <button class="drawer-backdrop" [class.open]="menuOpen" type="button" (click)="closeMenu()" aria-label="Close Studio navigation"></button>
     <aside [class.open]="menuOpen">
       <button type="button" class="drawer-close" (click)="closeMenu()" aria-label="Close Studio navigation">×</button>
       <a class="brand" routerLink="/admin"
-        ><b>✦</b><span>Scripture Quest<small>Content Studio</small></span></a
+        ><b>✦</b><span>Lightbearer<small>Content Studio</small></span></a
       >
       <nav>
         <a

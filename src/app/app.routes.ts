@@ -96,6 +96,16 @@ export const routes: Routes = [
   },
   { path: 'quiz-mode', component: QuizModePage, canActivate: [AuthGuard] },
   {
+    path: 'leaderboards',
+    component: FeaturePage,
+    canActivate: [AuthGuard],
+    data: {
+      title: 'Leaderboards',
+      subtitle: 'See how you rank against other Lightbearer players.',
+      background: '',
+    },
+  },
+  {
     path: 'achievements',
     component: FeaturePage,
     canActivate: [AuthGuard],

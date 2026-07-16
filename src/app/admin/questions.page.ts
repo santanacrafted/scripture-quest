@@ -582,7 +582,7 @@ export class AdminQuestionsPage implements OnInit {
     const blob = new Blob([JSON.stringify(clean, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob), link = document.createElement('a');
     link.href = url;
-    link.download = `scripture-quest-questions-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `lightbearer-questions-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
   }

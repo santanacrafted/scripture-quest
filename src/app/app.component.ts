@@ -27,7 +27,7 @@ import { ConnectivityService } from './connectivity/connectivity.service';
   styleUrl: './app.component.scss',
 })
 export class AppComponent {
-  title = 'scripture-quest';
+  title = 'Lightbearer';
 
   constructor(
     backgroundMusic: BackgroundMusicService,

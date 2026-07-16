@@ -1,6 +1,6 @@
 {
   "schemaVersion": "2.1",
-  "purpose": "Give this file to ChatGPT when generating Scripture Quest questions. Return only a JSON array of question objects matching the examples.",
+  "purpose": "Give this file to ChatGPT when generating Lightbearer questions. Return only a JSON array of question objects matching the examples.",
   "allowedValues": {
     "language": ["en", "es"],
     "category": ["characters", "scripture", "stories", "places", "teachings"],

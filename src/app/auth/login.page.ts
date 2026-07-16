@@ -38,7 +38,7 @@ type AuthMode = 'login' | 'register';
           </div>
 
           <header class="auth-header">
-            <p class="eyebrow">Scripture Quest</p>
+            <p class="eyebrow">Lightbearer</p>
             <h1>{{ mode === 'login' ? 'Welcome back' : 'Begin your quest' }}</h1>
             <p>
               {{ mode === 'login'

@@ -12,7 +12,7 @@ import { AuthService } from './auth.service';
     <main class="min-h-screen bg-slate-100 px-4 py-8 text-slate-900">
       <div class="mx-auto w-full max-w-md rounded-[32px] bg-white p-8 shadow-lg">
         <h1 class="text-3xl font-semibold text-slate-900">Create your account</h1>
-        <p class="mt-2 text-sm text-slate-600">Join Scripture Quest and play with friends or random Bible quiz opponents.</p>
+        <p class="mt-2 text-sm text-slate-600">Join Lightbearer and play with friends or random Bible quiz opponents.</p>
 
         <form class="mt-8 space-y-4" (ngSubmit)="signUp()">
           <label class="block text-sm font-semibold text-slate-700">

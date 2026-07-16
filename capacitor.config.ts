@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.darrensantana.scripturequest',
-  appName: 'Scripture Quest',
+  appName: 'Lightbearer',
   webDir: 'dist/scripture-quest/browser',
   plugins: {
     SplashScreen: {
