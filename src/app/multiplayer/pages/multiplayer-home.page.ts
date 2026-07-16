@@ -7,6 +7,9 @@ import { RouterLink } from '@angular/router';
   imports: [RouterLink],
   template: `
     <main class="home-page">
+      <div class="top-sparkles" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
       <section class="home-menu" aria-label="Main menu">
         <header>
           <img class="brand-icon" src="/Lightbearer.png" alt="" aria-hidden="true" />
@@ -56,16 +59,91 @@ import { RouterLink } from '@angular/router';
     }
 
     .home-page {
+      position: relative;
       display: grid;
       min-height: 100svh;
       box-sizing: border-box;
       place-items: center;
+      overflow: hidden;
       padding: calc(env(safe-area-inset-top) + 5rem) 1.25rem calc(env(safe-area-inset-bottom) + 1.5rem);
       background:
         radial-gradient(circle at 50% 18rem, #fffdf8 0, #f1eee5 42%, #e3ded2 100%);
     }
 
+    .home-page::before {
+      content: '';
+      position: absolute;
+      z-index: 0;
+      top: 0;
+      right: -8%;
+      left: -8%;
+      height: clamp(10rem, 19svh, 14rem);
+      border-bottom: 3px solid #d1aa45;
+      border-radius: 0 0 50% 50% / 0 0 24% 24%;
+      background:
+        radial-gradient(circle at 18% 35%, rgba(100, 197, 177, .22) 0 2px, transparent 3px),
+        radial-gradient(circle at 80% 46%, rgba(105, 160, 220, .24) 0 2px, transparent 3px),
+        linear-gradient(125deg, #123d43 0%, #1b6458 48%, #244f7d 100%);
+      background-size: 58px 58px, 74px 74px, auto;
+      box-shadow: 0 8px 24px rgba(22, 61, 65, .28), inset 0 -5px 0 rgba(255, 237, 165, .12);
+      pointer-events: none;
+    }
+
+    .home-page::after {
+      content: '✦';
+      position: absolute;
+      z-index: 0;
+      top: clamp(7.7rem, 15svh, 10.5rem);
+      left: 50%;
+      width: min(72vw, 25rem);
+      transform: translateX(-50%);
+      color: #f0ca62;
+      font-size: .85rem;
+      letter-spacing: min(12vw, 4.5rem);
+      text-align: center;
+      text-shadow: -8rem 0 #f0ca6299, 8rem 0 #f0ca6299;
+      pointer-events: none;
+    }
+
+    .top-sparkles {
+      position: absolute;
+      z-index: 1;
+      top: 0;
+      left: 50%;
+      width: min(100%, 40rem);
+      height: clamp(9rem, 18svh, 13rem);
+      transform: translateX(-50%);
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .top-sparkles i {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #ffe381;
+      box-shadow: 0 0 5px #ffd454, 0 0 12px #ffc12e;
+      opacity: .2;
+      animation: particle-sparkle 3.6s ease-in-out infinite;
+    }
+
+    .top-sparkles i:nth-child(1) { left:8%;top:24%;animation-delay:-.4s }
+    .top-sparkles i:nth-child(2) { left:18%;top:57%;animation-delay:-2.1s }
+    .top-sparkles i:nth-child(3) { left:29%;top:34%;animation-delay:-1.2s }
+    .top-sparkles i:nth-child(4) { left:38%;top:68%;animation-delay:-2.8s }
+    .top-sparkles i:nth-child(5) { left:46%;top:20%;animation-delay:-1.7s }
+    .top-sparkles i:nth-child(6) { left:54%;top:52%;animation-delay:-3.2s }
+    .top-sparkles i:nth-child(7) { left:63%;top:30%;animation-delay:-.8s }
+    .top-sparkles i:nth-child(8) { left:72%;top:64%;animation-delay:-2.4s }
+    .top-sparkles i:nth-child(9) { left:82%;top:22%;animation-delay:-1.5s }
+    .top-sparkles i:nth-child(10) { left:91%;top:51%;animation-delay:-3s }
+    .top-sparkles i:nth-child(11) { left:14%;top:76%;animation-delay:-1s }
+    .top-sparkles i:nth-child(12) { left:87%;top:79%;animation-delay:-2.6s }
+
     .home-menu {
+      position: relative;
+      z-index: 1;
       width: min(100%, 34rem);
     }
 
@@ -88,7 +166,6 @@ import { RouterLink } from '@angular/router';
       transform: translateX(-50%);
       border-radius: 50%;
       background: radial-gradient(ellipse, rgba(245, 190, 55, .23), rgba(245, 190, 55, .07) 42%, transparent 72%);
-      filter: blur(3px);
       pointer-events: none;
     }
 
@@ -109,7 +186,7 @@ import { RouterLink } from '@angular/router';
         radial-gradient(circle at 72% 58%, rgba(93, 201, 75, .42), transparent 44%);
       filter: blur(15px);
       opacity: .68;
-      animation: shine-pulse 5.5s ease-in-out infinite;
+      animation: shine-pulse 5.5s ease-in-out infinite, aura-color 8s ease-in-out infinite;
       pointer-events: none;
     }
 
@@ -250,6 +327,9 @@ import { RouterLink } from '@angular/router';
     .quick-match b {
       position: relative;
       z-index: 1;
+      font: 900 1rem Georgia, serif;
+      letter-spacing: .03em;
+      text-transform: uppercase;
     }
 
     .primary-color {
@@ -312,12 +392,6 @@ import { RouterLink } from '@angular/router';
 
     .practice-color:active {
       background: linear-gradient(135deg, #132f51, #1c426b);
-    }
-
-    .quick-match b {
-      font: 900 1rem Georgia, serif;
-      letter-spacing: .03em;
-      text-transform: uppercase;
     }
 
     .quick-match:hover {
@@ -394,11 +468,24 @@ import { RouterLink } from '@angular/router';
       50% { opacity: .72; scale: 1.03; }
     }
 
+    @keyframes aura-color {
+      0%, 100% { filter: blur(15px) saturate(1); }
+      33% { filter: blur(18px) saturate(1.3) hue-rotate(8deg); }
+      66% { filter: blur(16px) saturate(1.18) hue-rotate(-8deg); }
+    }
+
+    @keyframes particle-sparkle {
+      0%, 72%, 100% { opacity: .16; scale: .65; filter: brightness(.8); }
+      78% { opacity: 1; scale: 2.4; filter: brightness(1.7); }
+      84% { opacity: .45; scale: 1.15; filter: brightness(1.1); }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       header,
       header,
       .quick-match,
-      header::after { animation: none; }
+      header::after,
+      .top-sparkles i { animation: none; }
     }
 
   `],
