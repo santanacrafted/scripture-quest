@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, inject } from '@angular/core';
 import {
   FormArray,
   FormBuilder,
@@ -24,6 +24,7 @@ import { QuestionRepository } from './question.repository';
 import { MediaService } from './media.service';
 import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical-scope';
 @Component({
+  selector: 'app-question-editor-page',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, DragDropModule, InteractiveQuestionComponent],
   template: `<header>
@@ -718,6 +719,9 @@ import { formatBiblicalScope, parseBiblicalScope, scopeTokens } from './biblical
   ],
 })
 export class QuestionEditorPage implements OnInit, OnDestroy {
+  @Input() questionId?: string;
+  @Input() modal = false;
+  @Output() closed = new EventEmitter<boolean>();
   private readonly fb = inject(FormBuilder);
   id = '';
   message = '';
@@ -782,7 +786,7 @@ export class QuestionEditorPage implements OnInit, OnDestroy {
   ) {}
   media: StudioQuestion['media'];
   async ngOnInit() {
-    this.id = this.route.snapshot.paramMap.get('questionId') || '';
+    this.id = this.questionId || this.route.snapshot.paramMap.get('questionId') || '';
     if (this.id) {
       const q = await this.repo.get(this.id);
       if (q) {
@@ -827,7 +831,10 @@ export class QuestionEditorPage implements OnInit, OnDestroy {
     else if (!this.applyJson()) return;
     this.editorMode = mode;
   }
-  backToQuestions() { void this.router.navigate(['/admin/questions'], { queryParams: this.route.snapshot.queryParams }); }
+  backToQuestions() {
+    if (this.modal) this.closed.emit(false);
+    else void this.router.navigate(['/admin/questions'], { queryParams: this.route.snapshot.queryParams });
+  }
   openGamePreview() {
     if (this.editorMode === 'json' && !this.applyJson()) return;
     const answer = this.buildAnswer();
@@ -1177,7 +1184,8 @@ export class QuestionEditorPage implements OnInit, OnDestroy {
         ? 'Submitted for review.'
         : 'Draft saved.';
       this.messageKind = 'success';
-      await this.router.navigate(['/admin/questions'], { queryParams: this.route.snapshot.queryParams });
+      if (this.modal) this.closed.emit(true);
+      else await this.router.navigate(['/admin/questions'], { queryParams: this.route.snapshot.queryParams });
     } catch (e: any) {
       this.validationErrors = this.firebaseErrors(e);
       this.message = this.validationErrors.length

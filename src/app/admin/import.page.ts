@@ -32,8 +32,12 @@ import { QuestionRepository } from './question.repository';
         [(ngModel)]="input"
         rows="10"
         [placeholder]="placeholder"
-      ></textarea
-      ><button class="parse" (click)="parse()">Parse and validate</button>
+      ></textarea>
+      <div class="source-actions">
+        <button type="button" class="clear" [disabled]="!input && !rows.length" (click)="clearInput()">Clear</button>
+        <button type="button" class="paste" (click)="pasteFromClipboard()">Paste from clipboard</button>
+        <button class="parse" (click)="parse()">Parse and validate</button>
+      </div>
     </section>
     <div *ngIf="message" class="import-message" [class.error]="messageKind === 'error'" role="status" aria-live="polite">
       <b>{{ messageKind === 'error' ? 'Import did not complete' : 'Import complete' }}</b>
@@ -142,6 +146,10 @@ import { QuestionRepository } from './question.repository';
         background: #fff;
         font-weight: 800;
       }
+      .source-actions { display:flex;justify-content:flex-end;gap:.55rem; }
+      .source-actions button { min-height:42px;padding:.65rem .8rem;border:1px solid #b9c7c1;border-radius:7px;background:#fff;color:#245a4d;font-weight:800; }
+      .source-actions .clear { color:#9d3027; }
+      .source-actions button:disabled { opacity:.45; }
       .format .on,
       .parse,
       .summary button {
@@ -264,6 +272,8 @@ import { QuestionRepository } from './question.repository';
           width: 100%;
           min-height: 48px;
         }
+        .source-actions { display:grid;grid-template-columns:1fr 1fr; }
+        .source-actions .parse { grid-column:1/-1; }
         .summary {
           gap: 0.45rem;
         }
@@ -315,6 +325,25 @@ export class AdminImportPage {
     return this.format === 'csv'
       ? 'Paste CSV including its header row…'
       : 'Paste a JSON array of question records…';
+  }
+  clearInput() {
+    this.input = '';
+    this.rows = [];
+    this.message = '';
+  }
+  async pasteFromClipboard() {
+    this.message = '';
+    try {
+      if (!navigator.clipboard?.readText) throw new Error('Clipboard access is unavailable.');
+      this.input = await navigator.clipboard.readText();
+      if (!this.input) throw new Error('The clipboard is empty.');
+      const trimmed = this.input.trim();
+      this.format = trimmed.startsWith('[') || trimmed.startsWith('{') ? 'json' : 'csv';
+      this.rows = [];
+    } catch (error) {
+      this.message = error instanceof Error ? error.message : 'Clipboard access was denied. Paste into the field manually.';
+      this.messageKind = 'error';
+    }
   }
   parse() {
     this.message = '';

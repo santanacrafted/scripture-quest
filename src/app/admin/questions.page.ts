@@ -4,9 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { QuestionRepository } from './question.repository';
 import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, TYPES } from './admin.models';
+import { QuestionEditorPage } from './question-editor.page';
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, QuestionEditorPage],
   template: `<header>
       <div>
         <p>QUESTION LIBRARY</p>
@@ -147,7 +148,7 @@ import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, 
             <td class="prompt" data-label="Prompt">{{ q.prompt }}</td>
             <td data-label="Reference">{{ q.scriptureReference || '—' }}</td>
             <td class="action-cell">
-              <a [routerLink]="['/admin/questions', q.id]" [queryParams]="filterParams">Edit</a>
+              <button class="edit" type="button" (click)="openEditor(q.id)">Edit</button>
               <button class="delete" (click)="deleteOne(q)">Delete</button>
             </td>
           </tr>
@@ -156,6 +157,11 @@ import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, 
       <p class="empty" *ngIf="!filtered.length">
         No questions match these filters. Create your first question to begin.
       </p>
+    </div>
+    <div class="editor-modal" *ngIf="editingQuestionId" role="dialog" aria-modal="true" aria-label="Edit question" (click)="closeEditor(false)">
+      <section class="editor-panel" (click)="$event.stopPropagation()">
+        <app-question-editor-page [questionId]="editingQuestionId" [modal]="true" (closed)="closeEditor($event)"></app-question-editor-page>
+      </section>
     </div>`,
   styles: [
     `
@@ -297,6 +303,9 @@ import { CATEGORIES, QUESTION_SCOPES, QUESTION_SUPPORTED_MODES, StudioQuestion, 
         background: #fff;
         font-weight: 800;
       }
+      .action-cell .edit { padding:.7rem 1rem; border:0; border-radius:8px; background:#1d6958; color:#fff; font-weight:800; }
+      .editor-modal { position:fixed;z-index:1100;inset:0;overflow:auto;padding:clamp(.5rem,2vw,1.25rem);background:#071612c7;backdrop-filter:blur(5px); }
+      .editor-panel { width:min(100%,1100px);min-height:calc(100svh - 2.5rem);margin:auto;padding:clamp(.75rem,2vw,1.5rem);border-radius:16px;background:#f7f9f8;box-shadow:0 24px 80px #00150f99; }
       table {
         width: 100%;
         border-collapse: collapse;
@@ -482,6 +491,7 @@ export class AdminQuestionsPage implements OnInit {
   bulkBusy = false;
   notice = '';
   noticeKind: 'success' | 'error' = 'success';
+  editingQuestionId = '';
   constructor(private repo: QuestionRepository, private route: ActivatedRoute, private router: Router) {}
   async ngOnInit() {
     const params = this.route.snapshot.queryParamMap;
@@ -493,6 +503,20 @@ export class AdminQuestionsPage implements OnInit {
     this.setAppliedFilters(source);
     this.questions = await this.repo.list();
     if (!params.keys.length && this.activeFilterCount) this.filtersChanged();
+  }
+  openEditor(id: string) {
+    this.modalBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    this.editingQuestionId = id;
+  }
+  async closeEditor(saved: boolean) {
+    this.editingQuestionId = '';
+    document.body.style.overflow = this.modalBodyOverflow;
+    if (saved) {
+      this.questions = await this.repo.list();
+      this.notice = 'Question saved.';
+      this.noticeKind = 'success';
+    }
   }
   get books() {
     const values = new Map<string, string>();
