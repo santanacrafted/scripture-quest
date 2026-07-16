@@ -16,12 +16,14 @@ type BattleTab = 'active' | 'friends' | 'history';
 @Component({
   selector: 'app-multiplayer-battle-page', standalone: true, imports: [CommonModule, RouterLink],
   template: `
-    <main class="multiplayer-page" style="height:100svh;overflow:hidden;box-sizing:border-box;display:grid;grid-template-rows:auto minmax(0,1fr)">
+    <main class="multiplayer-page" style="height:100svh;overflow:hidden;box-sizing:border-box;display:grid;grid-template-rows:auto minmax(0,1fr);padding-top:0">
       <div class="toast" *ngIf="message" role="status" aria-live="polite">{{message}}</div>
-      <header class="page-header"><strong class="app-name"><img src="/Lightbearer.png" alt="" aria-hidden="true" style="width:42px;height:42px;margin-right:.45rem;object-fit:contain">Lightbearer</strong></header>
+      <header class="battle-brand-hero">
+        <div class="battle-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="battle-hero-copy"><p>LIGHTBEARER</p><h1>Play Online</h1><span>Continue a match or play a friend.</span></div>
+      </header>
 
-      <section class="battle-workspace" style="min-height:0;display:grid;grid-template-rows:auto auto auto minmax(0,1fr)">
-        <div class="intro"><p>MULTIPLAYER</p><h1>Bible Game</h1><span>Continue a match or play a friend.</span></div>
+      <section class="battle-workspace" style="min-height:0;display:grid;grid-template-rows:auto auto minmax(0,1fr)">
         <div style="display:grid;grid-template-columns:42px minmax(0,1fr) 42px;min-height:72px;align-items:stretch;margin:1.25rem 0 0;border:2px solid #d2ad4f;border-radius:13px;background:linear-gradient(135deg,#17375f,#244f7d);box-shadow:inset 0 0 0 1px #fff2b533,inset 0 1px 0 #ffffff24,0 4px 12px #18375f2e;color:#fff;overflow:hidden">
           <button type="button" (click)="cycleDifficulty(-1)" aria-label="Previous difficulty" style="border:0;background:transparent;color:#f1d477;font:900 1.7rem Georgia">‹</button>
           <div style="display:grid;align-content:center;padding:.5rem .25rem;text-align:center">

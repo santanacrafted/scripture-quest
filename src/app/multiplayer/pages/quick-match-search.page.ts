@@ -28,7 +28,7 @@ import { QuickMatchService } from '../quick-match.service';
           <small>seconds searching</small>
         </div>
 
-        <p *ngIf="!isOnline" class="notice" role="status">Reconnecting to the kingdom...</p>
+        <p *ngIf="!isOnline" class="notice" role="status">Reconnecting to matchmaking...</p>
         <p *ngIf="errorMessage" class="error" role="alert">{{ errorMessage }}</p>
 
         <div class="actions">
@@ -143,8 +143,8 @@ import { QuickMatchService } from '../quick-match.service';
       margin: 0;
       color: #17140d;
       font-family: Georgia, 'Times New Roman', serif;
-      font-size: clamp(2.2rem, 9vw, 3.4rem);
-      line-height: 0.98;
+      font-size: clamp(1.65rem, 7vw, 2.5rem);
+      line-height: 1.02;
       text-transform: uppercase;
       text-wrap: balance;
     }
@@ -275,10 +275,10 @@ export class QuickMatchSearchPage implements OnInit, OnDestroy {
   // does not lose their FIFO position while the search is still valid.
   private readonly searchWindowSeconds = 90;
   readonly messages = [
-    'Searching nearby kingdoms...',
-    'Looking for another explorer...',
-    'Preparing the challenge...',
-    'Checking the battle scrolls...',
+    'Joining the matchmaking queue...',
+    'Looking for another Lightbearer...',
+    'Checking for a compatible player...',
+    'Keeping your place in the queue...',
   ];
 
   status: 'searching' | 'matched' | 'expired' | 'cancelled' | 'error' = 'searching';
@@ -586,6 +586,6 @@ export class QuickMatchSearchPage implements OnInit, OnDestroy {
       return 'No match yet';
     }
 
-    return 'Searching for another explorer...';
+    return 'Looking for another Lightbearer...';
   }
 }
