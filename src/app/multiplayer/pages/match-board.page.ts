@@ -381,6 +381,7 @@ export class MatchBoardPage implements OnInit, OnDestroy {
       this.router.navigate(['/multiplayer-battle']);
       return;
     }
+    this.restoreWheelPosition(id);
     this.syncingAnswer = this.service.hasPendingAnswer(id);
     const optimisticMatch = history.state?.optimisticMatch as FirestoreQuickMatch | undefined;
     if (this.syncingAnswer && optimisticMatch?.id === id) {
@@ -558,6 +559,7 @@ export class MatchBoardPage implements OnInit, OnDestroy {
         ? this.match.selectedCategory
         : this.categories[landedIndex];
       const matchId = this.match.id;
+      sessionStorage.setItem(this.wheelPositionKey(matchId), String(normalizedRotation));
       const questionRequest = this.service.spinWheel(matchId, selectedCategory);
       let rouletteTimer: ReturnType<typeof setInterval> | undefined;
       try {
@@ -594,6 +596,15 @@ export class MatchBoardPage implements OnInit, OnDestroy {
   }
   name(id: string) {
     return this.match?.players[id]?.displayName || this.match?.players[id]?.username || 'Explorer';
+  }
+  private wheelPositionKey(matchId: string) {
+    return `quick-match-wheel:${matchId}:${this.myId}`;
+  }
+  private restoreWheelPosition(matchId: string) {
+    const value = sessionStorage.getItem(this.wheelPositionKey(matchId));
+    if (value === null) return;
+    const stored = Number(value);
+    if (Number.isFinite(stored)) this.wheelRotation = ((stored % 360) + 360) % 360;
   }
   sparks(id: string) {
     return this.match?.players[id]?.sparks || 0;
