@@ -38,6 +38,7 @@ type AuthMode = 'login' | 'register';
           </div>
 
           <header class="auth-header">
+            <img class="brand-icon" src="/Lightbearer.png" alt="" aria-hidden="true" />
             <p class="eyebrow">Lightbearer</p>
             <h1>{{ mode === 'login' ? 'Welcome back' : 'Begin your quest' }}</h1>
             <p>
@@ -210,6 +211,14 @@ type AuthMode = 'login' | 'register';
       text-shadow:
         0 2px 0 rgba(32, 21, 7, 0.72),
         0 0.25rem 1rem rgba(0, 0, 0, 0.58);
+    }
+
+    .brand-icon {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto .2rem;
+      object-fit: contain;
+      filter: drop-shadow(0 7px 10px rgba(0, 0, 0, .55));
     }
 
     .eyebrow {

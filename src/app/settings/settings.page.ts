@@ -25,6 +25,7 @@ import { BackgroundMusicService } from '../audio/background-music.service';
 
       <section class="mx-auto flex max-w-md flex-col gap-5">
         <header class="text-center">
+          <img class="mx-auto h-16 w-16 object-contain drop-shadow-lg" src="/Lightbearer.png" alt="" aria-hidden="true" />
           <p class="font-serif text-xs font-bold uppercase tracking-[0.24em] text-quest-gold">
             Lightbearer
           </p>

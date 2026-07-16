@@ -7,14 +7,14 @@ import { filter, Subscription } from 'rxjs';
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
   template: `<main>
     <header class="mobile-header">
-      <a class="brand" routerLink="/admin"><b>✦</b><span>Lightbearer<small>Content Studio</small></span></a>
+      <a class="brand" routerLink="/admin"><img src="/Lightbearer.png" alt=""><span>Lightbearer<small>Content Studio</small></span></a>
       <button type="button" class="menu-button" (click)="openMenu()" aria-label="Open Studio navigation" [attr.aria-expanded]="menuOpen">☰</button>
     </header>
     <button class="drawer-backdrop" [class.open]="menuOpen" type="button" (click)="closeMenu()" aria-label="Close Studio navigation"></button>
     <aside [class.open]="menuOpen">
       <button type="button" class="drawer-close" (click)="closeMenu()" aria-label="Close Studio navigation">×</button>
       <a class="brand" routerLink="/admin"
-        ><b>✦</b><span>Lightbearer<small>Content Studio</small></span></a
+        ><img src="/Lightbearer.png" alt=""><span>Lightbearer<small>Content Studio</small></span></a
       >
       <nav>
         <a
@@ -70,9 +70,11 @@ import { filter, Subscription } from 'rxjs';
         text-decoration: none;
         font-weight: 900;
       }
-      .brand b {
-        font-size: 2rem;
-        color: #f0ca62;
+      .brand img {
+        width: 2.4rem;
+        height: 2.4rem;
+        object-fit: contain;
+        filter: drop-shadow(0 4px 5px #0007);
       }
       .brand small {
         display: block;
@@ -116,7 +118,7 @@ import { filter, Subscription } from 'rxjs';
         }
         .mobile-header { position:sticky;z-index:30;top:0;display:flex;align-items:center;justify-content:space-between;min-height:72px;padding:max(.65rem,env(safe-area-inset-top)) 1rem .65rem;background:#0e2722;color:#fff;box-shadow:0 4px 18px #06130f33; }
         .mobile-header .brand { font-size:.95rem; }
-        .mobile-header .brand b { font-size:1.65rem; }
+        .mobile-header .brand img { width:2rem;height:2rem; }
         .menu-button { display:grid;width:44px;height:44px;place-items:center;border:1px solid #55766e;border-radius:10px;background:#173b33;color:#fff;font-size:1.35rem; }
         .drawer-backdrop { position:fixed;z-index:39;inset:0;display:block;border:0;background:#06110ed1;opacity:0;pointer-events:none;transition:opacity .22s ease; }
         .drawer-backdrop.open { opacity:1;pointer-events:auto; }

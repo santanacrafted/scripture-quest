@@ -18,7 +18,7 @@ type BattleTab = 'active' | 'friends' | 'history';
   template: `
     <main class="multiplayer-page" style="height:100svh;overflow:hidden;box-sizing:border-box;display:grid;grid-template-rows:auto minmax(0,1fr)">
       <div class="toast" *ngIf="message" role="status" aria-live="polite">{{message}}</div>
-      <header class="page-header"><strong class="app-name">Lightbearer</strong></header>
+      <header class="page-header"><strong class="app-name"><img src="/Lightbearer.png" alt="" aria-hidden="true" style="width:42px;height:42px;margin-right:.45rem;object-fit:contain">Lightbearer</strong></header>
 
       <section class="battle-workspace" style="min-height:0;display:grid;grid-template-rows:auto auto auto minmax(0,1fr)">
         <div class="intro"><p>MULTIPLAYER</p><h1>Bible Game</h1><span>Continue a match or play a friend.</span></div>
