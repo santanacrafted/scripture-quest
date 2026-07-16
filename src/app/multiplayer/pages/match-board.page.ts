@@ -22,6 +22,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
     <div class="text-center text-emerald-100"><span class="block text-5xl text-amber-300">✦</span><h2 class="my-2 font-serif text-xl font-black uppercase text-amber-300">Returning to the board</h2><p>Preparing your next turn…</p></div>
   </main>
   <main class="board" *ngIf="match" style="position:relative">
+    <p *ngIf="wheelError" class="wheel-error" role="alert">{{ wheelError }}</p>
     <header style="position:absolute;z-index:9;top:calc(max(env(safe-area-inset-top),1.5rem) + .75rem);left:1rem;right:1rem">
       <button (click)="back()">‹</button><span>LIGHT BATTLE</span><button type="button" (click)="showHelp=!showHelp" aria-label="How to play">?</button>
     </header>
@@ -135,6 +136,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
         padding: calc(max(env(safe-area-inset-top), 1.5rem) + 4rem) 1rem
           calc(env(safe-area-inset-bottom) + 1rem);
       }
+      .wheel-error { position:fixed;z-index:20;top:calc(env(safe-area-inset-top) + .75rem);left:50%;width:min(calc(100% - 2rem),30rem);box-sizing:border-box;margin:0;padding:.8rem 1rem;transform:translateX(-50%);border:1px solid #f1ce70;border-radius:12px;background:#602f28;color:#fff7df;box-shadow:0 10px 28px #0006;text-align:center;font-weight:800; }
       header {
         display: grid;
         grid-template-columns: 46px 1fr 46px;
@@ -351,6 +353,7 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     { label: 'Emoji Challenge', icon: '✨' }, { label: 'What Happens Next', icon: '➡️' },
   ];
   spinning = false;
+  wheelError = '';
   charging = false;
   chargePercent = 0;
   wheelRotation = 0;
@@ -536,6 +539,7 @@ export class MatchBoardPage implements OnInit, OnDestroy {
     if (!this.match || this.spinning) return;
     if (this.match.phase === 'spin' || this.match.phase === 'light_challenge') {
       this.spinning = true;
+      this.wheelError = '';
       const fullTurns = 3 + Math.floor(charge * 6);
       this.spinDuration = 1100 + Math.round(charge * 1400);
       if (this.match.phase === 'light_challenge' && this.match.selectedCategory) {
@@ -576,6 +580,11 @@ export class MatchBoardPage implements OnInit, OnDestroy {
         sessionStorage.setItem(`quick-match-answer:${matchId}:${spinResult.question.id}`, spinResult.correctAnswer);
         sessionStorage.setItem(`quick-match-question:${matchId}`, JSON.stringify({ question: spinResult.question, category: selectedCategory }));
         await this.router.navigate(['/multiplayer/play', matchId]);
+      } catch (error) {
+        console.error('[Quick Match] Wheel spin failed.', error);
+        this.wheelError = error instanceof Error && error.message
+          ? error.message
+          : 'The challenge could not be loaded. Please spin again.';
       } finally {
         clearInterval(rouletteTimer);
         this.transitionCategory = null;

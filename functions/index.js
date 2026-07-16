@@ -313,8 +313,19 @@ exports.spinMatchWheel = functions.https.onCall(requireAuth(async (data, context
   if (requestedPhase === 'light_challenge' && matchBeforeSpin.get('selectedCategory')) {
     category = matchBeforeSpin.get('selectedCategory') === 'knowledge' ? 'bible_knowledge' : matchBeforeSpin.get('selectedCategory');
   }
-  const questions = await db.collection('questions').where('category', '==', category).limit(100).get();
-  const playableQuestions = questions.docs.filter((doc) =>
+  // `bible_knowledge` is the Content Studio value, while older imports and
+  // the game model used `knowledge`. Read both so this wheel segment cannot
+  // become a dead end when a library contains either representation.
+  const categoryAliases = category === 'bible_knowledge'
+    ? ['bible_knowledge', 'knowledge']
+    : [category];
+  const questionSnapshots = await Promise.all(categoryAliases.map((alias) =>
+    db.collection('questions').where('category', '==', alias).limit(100).get()
+  ));
+  const questionDocs = [...new Map(
+    questionSnapshots.flatMap((snapshot) => snapshot.docs).map((doc) => [doc.id, doc])
+  ).values()];
+  const playableQuestions = questionDocs.filter((doc) =>
     doc.get('status') === 'published' &&
     doc.get('isActive') === true &&
     (doc.get('supportedModes') || []).includes('battle') &&
