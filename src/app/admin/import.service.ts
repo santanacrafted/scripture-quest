@@ -117,7 +117,7 @@ export class ImportService {
           altText: raw['media_alt_text'],
         }
       : undefined;
-    const multipleChoiceTypes: ContentQuestionType[] = ['multiple_choice', 'pictionary', 'verse_completion', 'reference_match', 'who_said_it', 'emoji_challenge', 'odd_one_out', 'what_happens_next'];
+    const multipleChoiceTypes: ContentQuestionType[] = ['multiple_choice', 'pictionary', 'verse_completion', 'reference_match', 'who_am_i', 'who_said_it', 'emoji_challenge', 'odd_one_out', 'what_happens_next'];
     if (multipleChoiceTypes.includes(type) && answer.type !== 'multiple_choice')
       issues.push({ severity: 'error', message: 'This question type requires multiple-choice answerData.' });
     if (
@@ -181,7 +181,7 @@ export class ImportService {
         });
       }
     }
-    if (['multiple_choice', 'pictionary', 'verse_completion', 'reference_match', 'who_said_it', 'emoji_challenge', 'odd_one_out', 'what_happens_next'].includes(type)) {
+    if (['multiple_choice', 'pictionary', 'verse_completion', 'reference_match', 'who_am_i', 'who_said_it', 'emoji_challenge', 'odd_one_out', 'what_happens_next'].includes(type)) {
       const values = ['option_a', 'option_b', 'option_c', 'option_d'].map(
         (k) => r[k] || ''
       );

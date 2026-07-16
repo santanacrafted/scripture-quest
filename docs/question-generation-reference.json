@@ -145,7 +145,7 @@
       "passages": [{ "bookId": "luke", "bookName": "Luke", "chapterStart": 19, "chapterEnd": 19, "verseStart": 1, "verseEnd": 10 }],
       "topics": ["repentance"],
       "tags": ["Zacchaeus", "Jericho"],
-      "answerData": { "type": "text", "primaryAnswer": "Zacchaeus", "acceptedAnswers": [], "distractors": ["Bartimaeus", "Nicodemus", "Matthew"], "caseSensitive": false }
+      "answerData": { "type": "multiple_choice", "options": [{ "id": "o0", "text": "Zacchaeus" }, { "id": "o1", "text": "Bartimaeus" }, { "id": "o2", "text": "Nicodemus" }, { "id": "o3", "text": "Matthew" }], "correctOptionIds": ["o0"] }
     },
     {
       "externalId": "example-who-said-it-001",
