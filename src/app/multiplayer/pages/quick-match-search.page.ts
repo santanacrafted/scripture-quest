@@ -387,7 +387,7 @@ export class QuickMatchSearchPage implements OnInit, OnDestroy {
         const isPlayable = !!match
           && match.playerIds?.includes(userId)
           && match.playerIds.length >= 1
-          && match.status === 'active'
+          && ['active', 'waiting_for_opponent'].includes(match.status)
           && !!match.currentTurnPlayerId
           && ['spin', 'light_challenge', 'question'].includes(match.phase);
         if (isPlayable) {
