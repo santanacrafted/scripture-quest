@@ -58,6 +58,14 @@ import { QuestionRepository } from './question.repository';
             [(ngModel)]="row.included"
             [disabled]="hasErrors(row)"
           /><b>Row {{ row.row }}</b
+          ><button
+            type="button"
+            class="remove-row"
+            [attr.aria-label]="'Remove row ' + row.row + ' from import'"
+            title="Remove this question"
+            [disabled]="busy"
+            (click)="removeRow(row)"
+          >×</button
           ><span>{{ row.question?.prompt || 'Could not create question' }}</span
           ><small
             *ngFor="let issue of row.issues"
@@ -189,18 +197,38 @@ import { QuestionRepository } from './question.repository';
       }
       .rows article {
         display: grid;
-        grid-template-columns: auto auto 1fr;
+        grid-template-columns: auto auto 1fr auto;
         gap: 0.35rem 0.7rem;
         padding: 0.7rem;
         border-top: 1px solid #e5ebe8;
       }
+      .remove-row {
+        display: grid;
+        grid-column: 4;
+        grid-row: 1;
+        width: 2.25rem;
+        height: 2.25rem;
+        place-items: center;
+        align-self: center;
+        padding: 0;
+        border: 1px solid #d9aaa4;
+        border-radius: 50%;
+        background: #fff;
+        color: #a7352c;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .remove-row:disabled { opacity:.45;cursor:not-allowed; }
       .rows article > span {
+        grid-column: 3;
+        grid-row: 1;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
       .rows small {
-        grid-column: 3;
+        grid-column: 3 / 5;
         color: #a06922;
       }
       .rows .error {
@@ -286,13 +314,20 @@ import { QuestionRepository } from './question.repository';
           overflow: visible;
         }
         .rows article {
-          grid-template-columns: auto 1fr;
+          grid-template-columns: auto 1fr auto;
         }
         .rows article > b {
           grid-column: 2;
         }
+        .remove-row {
+          grid-column: 3;
+          grid-row: 1;
+          width: 2.75rem;
+          height: 2.75rem;
+        }
         .rows article > span {
           grid-column: 1/-1;
+          grid-row: auto;
           white-space: normal;
           overflow-wrap: anywhere;
         }
@@ -383,6 +418,10 @@ export class AdminImportPage {
   }
   hasErrors(r: ImportRow) {
     return r.issues.some((x) => x.severity === 'error');
+  }
+  removeRow(row: ImportRow) {
+    if (this.busy) return;
+    this.rows = this.rows.filter(candidate => candidate !== row);
   }
   async file(e: Event) {
     const f = (e.target as HTMLInputElement).files?.[0];

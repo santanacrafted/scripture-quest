@@ -70,28 +70,28 @@ export class ImportService {
         severity: 'error',
         message:
           raw['category'] === 'random'
-            ? 'Random cannot be stored as a category.'
-            : 'Unsupported category.',
+            ? `Category "random" cannot be stored. Choose one of: ${CATEGORIES.map(([value]) => value).join(', ')}.`
+            : `Unsupported category ${this.value(category)}. Choose one of: ${CATEGORIES.map(([value]) => value).join(', ')}.`,
       });
     if (!TYPES.some((x) => x[0] === type))
-      issues.push({ severity: 'error', message: 'Unsupported question type.' });
+      issues.push({ severity: 'error', message: `Unsupported questionType ${this.value(type)}. Choose one of: ${TYPES.map(([value]) => value).join(', ')}.` });
     if (!['easy', 'medium', 'hard', 'expert'].includes(difficulty))
-      issues.push({ severity: 'error', message: 'Unsupported difficulty.' });
+      issues.push({ severity: 'error', message: `Unsupported difficulty ${this.value(difficulty)}. Choose one of: easy, medium, hard, expert.` });
     if (!QUESTION_SCOPES.some(([scope]) => scope === questionScope))
-      issues.push({ severity: 'error', message: 'Scope must be chapter, book, multi_book, or whole_bible.' });
+      issues.push({ severity: 'error', message: `Unsupported scope ${this.value(questionScope)}. Choose one of: chapter, book, multi_book, whole_bible.` });
     if (!supportedModes.length || supportedModes.some(mode => !QUESTION_SUPPORTED_MODES.some(([allowed]) => allowed === mode)))
-      issues.push({ severity: 'error', message: 'Supported modes must include quiz, battle, or both.' });
+      issues.push({ severity: 'error', message: `Invalid supportedModes ${this.value(supportedModes)}. Use ["quiz"], ["battle"], or ["quiz", "battle"].` });
     if (new Set(supportedModes).size !== supportedModes.length)
       issues.push({ severity: 'error', message: 'Supported modes must not contain duplicates.' });
     if (['pictionary', 'map_challenge', 'emoji_challenge'].includes(type) &&
         (supportedModes.length !== 1 || supportedModes[0] !== 'battle'))
       issues.push({ severity: 'error', message: 'Pictionary, Map Challenge, and Emoji Challenge must be battle-only.' });
     if (!['en', 'es'].includes(language))
-      issues.push({ severity: 'error', message: 'Language must be en or es.' });
+      issues.push({ severity: 'error', message: `Unsupported language ${this.value(language)}. Choose "en" or "es".` });
     if (!prompt || prompt.length < 10)
       issues.push({
         severity: 'error',
-        message: 'Prompt must be at least 10 characters.',
+        message: `Prompt must be at least 10 characters; received ${prompt?.length || 0}.`,
       });
     const scriptureReference = source.scriptureReference || raw['scripture_reference'];
     if (!scriptureReference)
@@ -125,11 +125,11 @@ export class ImportService {
       answer.type === 'multiple_choice'
     ) {
       if (answer.options.length !== 4)
-        issues.push({ severity: 'error', message: 'Four answer options are required.' });
+        issues.push({ severity: 'error', message: `This question requires exactly four answer options; received ${answer.options.length}.` });
       if (answer.correctOptionIds.length !== 1)
-        issues.push({ severity: 'error', message: 'Exactly one correct option is required.' });
+        issues.push({ severity: 'error', message: `Exactly one correctOptionId is required; received ${answer.correctOptionIds.length}.` });
       if (!answer.correctOptionIds.every((id) => answer.options.some((option) => option.id === id)))
-        issues.push({ severity: 'error', message: 'The correct option ID must match an answer option.' });
+        issues.push({ severity: 'error', message: `correctOptionIds ${this.value(answer.correctOptionIds)} must match an option ID. Available IDs: ${answer.options.map(option => option.id).join(', ') || '(none)'}.` });
     }
     if (type === 'pictionary' && (!media?.downloadUrl || !media?.storagePath))
       issues.push({ severity: 'error', message: 'Pictionary requires media with storagePath and downloadUrl.' });
@@ -263,6 +263,10 @@ export class ImportService {
       .split(/[,|]/)
       .map((x) => x.trim())
       .filter(Boolean);
+  }
+  private value(value: unknown) {
+    if (value === undefined || value === null || value === '') return '(missing)';
+    return JSON.stringify(value);
   }
   private csv(text: string) {
     const lines = text
